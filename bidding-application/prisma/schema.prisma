@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum AuctionModel {
+  ENGLISH
+  PENNY
+  SEALED_BID
+}
+
+enum AuctionStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  CLOSING
+  CLOSED
+  CANCELLED
+}
+
+enum BidStatus {
+  ACTIVE
+  OUTBID
+  WON
+  LOST
+  REFUNDED
+  VOIDED
+}
+
+enum LedgerEntryType {
+  TOPUP
+  BID_LOCK
+  BID_RELEASE
+  BID_WIN_DEDUCT
+  BID_FEE_DEDUCT
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  OUTBID
+  AUCTION_WON
+  AUCTION_ENDING_SOON
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum AuctionEventType {
+  BID_PLACED
+  OUTBID
+  TIMER_EXTENDED
+  AUCTION_CLOSING_SOON
+  AUCTION_CLOSED
+}
+
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  role         UserRole @default(BUYER)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  wallet              Wallet?
+  products            Product[]
+  bids                Bid[]
+  paymentTransactions PaymentTransaction[]
+  notifications       Notification[]
+  watchedAuctions     AuctionWatcher[]
+}
+
+model Wallet {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  availableBalance BigInt   @default(0)
+  lockedBalance    BigInt   @default(0)
+  version          Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  walletId      String
+  wallet        Wallet          @relation(fields: [walletId], references: [id])
+  type          LedgerEntryType
+  amount        BigInt
+  referenceId   String?
+  referenceType String?
+  balanceAfter  BigInt
+  createdAt     DateTime        @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+model PaymentTransaction {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  provider         PaymentProvider
+  gatewayPaymentId String          @unique
+  amountInRupees   BigInt
+  creditsGranted   BigInt
+  status           PaymentStatus   @default(INITIATED)
+  createdAt        DateTime        @default(now())
+  reconciledAt     DateTime?
+}
+
+model Product {
+  id                   String   @id @default(uuid())
+  sellerId             String
+  seller               User     @relation(fields: [sellerId], references: [id])
+  title                String
+  description          String
+  images               String[]
+  startingPriceCredits BigInt
+  createdAt            DateTime @default(now())
+
+  auction Auction?
+}
+
+model Auction {
+  id                       String        @id @default(uuid())
+  productId                String        @unique
+  product                  Product       @relation(fields: [productId], references: [id])
+  auctionModel             AuctionModel
+  status                   AuctionStatus @default(DRAFT)
+  startTime                DateTime
+  endTime                  DateTime
+  currentHighestBidId      String?
+  minIncrement             BigInt        @default(1)
+  bidFee                   BigInt?
+  priceStepPerBid          BigInt?
+  antiSnipingWindowSeconds Int           @default(30)
+  version                  Int           @default(0)
+
+  bids     Bid[]
+  order    Order?
+  watchers AuctionWatcher[]
+  events   AuctionEvent[]
+
+  @@index([status, endTime])
+}
+
+model AuctionWatcher {
+  id        String   @id @default(uuid())
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([auctionId, userId])
+  @@index([auctionId])
+}
+
+model AuctionEvent {
+  id        String           @id @default(uuid())
+  auctionId String
+  auction   Auction          @relation(fields: [auctionId], references: [id])
+  type      AuctionEventType
+  payload   Json
+  createdAt DateTime         @default(now())
+
+  @@index([auctionId, createdAt])
+}
+
+model Bid {
+  id             String    @id @default(uuid())
+  auctionId      String
+  auction        Auction   @relation(fields: [auctionId], references: [id])
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  amountCredits  BigInt
+  status         BidStatus @default(ACTIVE)
+  idempotencyKey String    @unique
+  createdAt      DateTime  @default(now())
+
+  wonOrder Order?
+
+  @@index([auctionId, amountCredits])
+}
+
+model Order {
+  id                String   @id @default(uuid())
+  auctionId         String   @unique
+  auction           Auction  @relation(fields: [auctionId], references: [id])
+  winningBidId      String   @unique
+  winningBid        Bid      @relation(fields: [winningBidId], references: [id])
+  buyerId           String
+  finalPriceCredits BigInt
+  fulfillmentStatus String   @default("PENDING")
+  createdAt         DateTime @default(now())
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  payload   Json
+  isRead    Boolean             @default(false)
+  createdAt DateTime            @default(now())
+}
+
