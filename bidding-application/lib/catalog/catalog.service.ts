@@ -80,7 +80,7 @@ export class CatalogService {
                         bids: { orderBy: { amountCredits: 'desc' }, take: 10 },
                     },
                 },
-                seller: { select: { id: true, name: true }},
+                seller: { select: { id: true, email: true }},
             },
         });
 

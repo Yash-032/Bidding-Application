@@ -4,9 +4,10 @@ import { toErrorResponse } from '@/lib/utils/errors';
 
 const catalogService = new CatalogService();
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const product = await catalogService.getProductDetail(params.id);
+        const { id } = await params;
+        const product = await catalogService.getProductDetail(id);
 
         return NextResponse.json({
             ...product,
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         });
 
     } catch(err) {
+        console.error(err);
         const { body, status } = toErrorResponse(err);
         return NextResponse.json(body, { status });
     }
