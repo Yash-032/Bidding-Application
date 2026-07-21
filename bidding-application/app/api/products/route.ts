@@ -55,14 +55,18 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({
-            product,
-            auction: {
-            ...auction,
-            minIncrement: auction.minIncrement.toString(),
-            bidFee: auction.bidFee?.toString() ?? null,
-            priceStepPerBid: auction.priceStepPerBid?.toString() ?? null,
+            product: {
+                ...product,
+                startingPriceCredits: product.startingPriceCredits.toString(),
             },
-        }, { status: 201 },);
+            auction: {
+                ...auction,
+                minIncrement: auction.minIncrement.toString(),
+                bidFee: auction.bidFee?.toString() ?? null,
+                priceStepPerBid: auction.priceStepPerBid?.toString() ?? null,
+            },
+        }, { status: 201 }
+        );
 
     } catch(err) {
         const { body, status } = toErrorResponse(err);
