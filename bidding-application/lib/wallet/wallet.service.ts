@@ -86,6 +86,31 @@ export class WalletService {
         return updated;
     }
 
+    async refundToAvailable(tx: TxClient, walletId: string, amount: bigint, referenceId: string) {
+        const wallet = await tx.wallet.findUniqueOrThrow({ where: { id: walletId } });
+
+        const updated = await tx.wallet.update({
+            where: { id: walletId, version: wallet.version },
+            data: {
+                availableBalance: { increment: amount },
+                version: { increment: 1 },
+            },
+        });
+
+        await tx.ledgerEntry.create({
+            data: {
+                walletId,
+                type: 'REFUND',
+                amount,
+                referenceId,
+                referenceType: 'BID',
+                balanceAfter: updated.availableBalance,
+            },
+        });
+        
+        return updated;
+    }
+
     async creditsFromTopUp(tx: TxClient, walletId: string, amount: bigint, paymentTransactionId: string) {
         const wallet = await tx.wallet.findUniqueOrThrow({ where: { id: walletId } });
 
