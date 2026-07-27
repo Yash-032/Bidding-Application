@@ -12,6 +12,7 @@ export class BidValidationError extends ValidationError {}
 
 export class BiddingService {
     async placeBid(req: BidRequest): Promise<Bid> {
+        let previousHighestBid: Bid | null = null;
         return prisma.$transaction(
             async (tx) => {
                 const existing = await tx.bid.findUnique({
@@ -27,7 +28,7 @@ export class BiddingService {
                 if(!auction)    throw new NotFoundError('Auction not found');
 
                 const strategy = AuctionStrategyFactory.resolve(auction.auctionModel);
-                const previousHighestBid = auction.currentHighestBidId
+                previousHighestBid = auction.currentHighestBidId
                     ? await tx.bid.findUnique({ where: { id: auction.currentHighestBidId } })
                     : null;
                 
@@ -85,7 +86,7 @@ export class BiddingService {
                 });
 
                 return newBid;
-            }, { isolationLevel: 'Serializable' },
+            }, { isolationLevel: 'Serializable', timeout: 25000 },
         ).then(async (newBid) => {
             if(req.idempotencyKey && newBid) {
                 await auctionSubject.notify({
@@ -93,6 +94,21 @@ export class BiddingService {
                     type: 'BID_PLACED',
                     data: { bidId: newBid.id, userId: newBid.userId, amount: newBid.amountCredits.toString() },
                 });
+
+                if (previousHighestBid) {
+                    await auctionSubject.notify({
+                        auctionId: req.auctionId,
+                        type: 'OUTBID',
+                        data: {
+                            auctionId: req.auctionId,
+                            previousBidId: (previousHighestBid as Bid).id,
+                            previousUserId: (previousHighestBid as Bid).userId,
+                            newBidId: newBid.id,
+                            newUserId: newBid.userId,
+                            amount: newBid.amountCredits.toString(),
+                        },
+                    });
+                }
             }
             return newBid;
         });

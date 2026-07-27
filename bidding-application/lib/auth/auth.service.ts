@@ -33,6 +33,8 @@ export class AuthService {
         data: { email: req.email, phone: req.phone, passwordHash },
       });
       await tx.wallet.create({ data: { userId: created.id } });
+      await tx.userProfile.create({ data: { userId: created.id, preferredSizes: [] } });
+      await tx.cart.create({ data: { userId: created.id } });
       return created;
     });
     console.timeEnd('signup transaction');

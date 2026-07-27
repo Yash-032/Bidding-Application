@@ -36,7 +36,7 @@ export async function getSessionUser(req: NextRequest): Promise<SessionUser | nu
   return { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified };
 }
 
-/** Throws UnauthorizedError if there's no valid session — use in routes that require auth. */
+/** Throws UnauthorizedError if there's no valid session - use in routes that require auth. */
 export async function requireSessionUser(req: NextRequest): Promise<SessionUser> {
   const user = await getSessionUser(req);
   if (!user) throw new UnauthorizedError();

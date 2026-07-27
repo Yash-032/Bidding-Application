@@ -30,3 +30,7 @@ export class AuctionSubject {
 }
 
 export const auctionSubject = new AuctionSubject();
+
+import { NotificationObserver, BoradcastObserver } from './observers';
+auctionSubject.subscribe(new NotificationObserver());
+auctionSubject.subscribe(new BoradcastObserver());

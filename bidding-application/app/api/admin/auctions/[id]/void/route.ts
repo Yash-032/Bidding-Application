@@ -17,6 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise< { id
 
         const result = await adminService.voidAuction(admin.id, (await params).id, reason);
         return NextResponse.json(result);
+        
     } catch(err) {
         const { body, status } = toErrorResponse(err);
         return NextResponse.json(body, { status });

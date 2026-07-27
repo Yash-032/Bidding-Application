@@ -71,6 +71,6 @@ export class AdminService {
 
             await tx.auction.update({ where: { id: auctionId }, data: { status: 'CANCELLED' } });
             return { voided: true, refundedBidCount: effects.refunds.length };
-        });
+        }, { timeout: 30000 });
     }
 }

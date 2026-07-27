@@ -16,10 +16,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         return NextResponse.json({
             ...auction,
+            startingPriceCredits: auction.startingPriceCredits.toString(),
             minIncrement: auction.minIncrement.toString(),
             bidFee: auction.bidFee?.toString() ?? null,
             priceStepPerBid: auction.priceStepPerBid?.toString() ?? null,
-            product: { ...auction.product, startingPriceCredits: auction.product.startingPriceCredits.toString() },
+            product: { ...auction.product, priceInRupees: auction.product.priceInRupees.toString() },
             bids: auction.bids.map((b) => ({ ...b, amountCredits: b.amountCredits.toString() })),
         });
     } catch(err) {

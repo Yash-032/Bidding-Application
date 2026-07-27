@@ -66,6 +66,15 @@ enum PaymentProvider {
   STRIPE
 }
 
+enum StoreOrderStatus {
+  PAYMENT_PENDING
+  PAID
+  PAYMENT_FAILED
+  CANCELLED
+  FULFILLED
+  REFUNDED
+}
+
 enum NotificationChannel {
   IN_APP
   EMAIL
@@ -80,7 +89,6 @@ enum AuctionEventType {
   AUCTION_CLOSING_SOON
   AUCTION_CLOSED
 }
-
 
 model User {
   id           String   @id @default(uuid())
@@ -97,6 +105,45 @@ model User {
   paymentTransactions PaymentTransaction[]
   notifications       Notification[]
   watchedAuctions     AuctionWatcher[]
+  storeOrders         StoreOrder[]
+  profile             UserProfile?
+  cart                Cart?
+}
+
+model UserProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName       String?
+  bio            String?
+  gender         String?
+  dateOfBirth    DateTime?
+  preferredSizes String[]
+  defaultAddress Json?
+  updatedAt      DateTime  @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId, size])
+  @@index([cartId])
 }
 
 model Wallet {
@@ -138,17 +185,95 @@ model PaymentTransaction {
   reconciledAt     DateTime?
 }
 
-model Product {
-  id                   String   @id @default(uuid())
-  sellerId             String
-  seller               User     @relation(fields: [sellerId], references: [id])
-  title                String
-  description          String
-  images               String[]
-  startingPriceCredits BigInt
-  createdAt            DateTime @default(now())
+  model Product {
+    id             String    @id @default(uuid())
+    sellerId       String
+    seller         User      @relation(fields: [sellerId], references: [id])
+    title          String
+    description    String
+    images         String[]
+    priceInRupees  BigInt
+    category       String    @default("OTHER")
+    categoryId     String?
+    categoryNode   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+    availableSizes String[]
+    stockQuantity  Int       @default(0)
+    isActive       Boolean   @default(true)
+    createdAt      DateTime  @default(now())
 
-  auction Auction?
+    auction         Auction?
+    storeOrders     StoreOrder[]
+    cartItems       CartItem[]
+    storeOrderItems StoreOrderItem[]
+
+    @@index([categoryId])
+  }
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String
+  path      String     @unique
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([parentId, slug])
+  @@index([parentId, isActive, sortOrder])
+}
+
+model StoreOrder {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id])
+  productId         String?
+  product           Product?         @relation(fields: [productId], references: [id])
+  size              String?
+  quantity          Int              @default(1)
+  subtotalPaise     BigInt
+  shippingPaise     BigInt
+  totalPaise        BigInt
+  currency          String           @default("INR")
+  status            StoreOrderStatus @default(PAYMENT_PENDING)
+  razorpayOrderId   String           @unique
+  razorpayPaymentId String?          @unique
+  deliveryAddress   Json
+  createdAt         DateTime         @default(now())
+  paidAt            DateTime?
+  updatedAt         DateTime         @updatedAt
+  items             StoreOrderItem[]
+
+  @@index([userId, createdAt])
+  @@index([productId])
+}
+
+model StoreOrderItem {
+  id             String     @id @default(uuid())
+  storeOrderId   String
+  storeOrder     StoreOrder @relation(fields: [storeOrderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product    @relation(fields: [productId], references: [id])
+  productTitle   String
+  productImage   String?
+  size           String
+  quantity       Int
+  unitPricePaise BigInt
+  lineTotalPaise BigInt
+
+  @@index([storeOrderId])
+  @@index([productId])
+}
+
+model RazorpayWebhookEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
 }
 
 model Auction {
@@ -160,6 +285,7 @@ model Auction {
   startTime                DateTime
   endTime                  DateTime
   currentHighestBidId      String?
+  startingPriceCredits     BigInt
   minIncrement             BigInt        @default(1)
   bidFee                   BigInt?
   priceStepPerBid          BigInt?
@@ -235,4 +361,3 @@ model Notification {
   isRead    Boolean             @default(false)
   createdAt DateTime            @default(now())
 }
-

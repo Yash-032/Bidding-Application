@@ -1,0 +1,70 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { useToast } from '@/app/components/Toast';
+import { createProduct, getCategories, type CategoryTreeNode } from '@/lib/api';
+
+const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+type CategoryOption = CategoryTreeNode & { depth: number };
+
+function flattenCategories(categories: CategoryTreeNode[], depth = 0): CategoryOption[] {
+  return categories.flatMap((category) => [
+    { ...category, depth },
+    ...flattenCategories(category.children, depth + 1),
+  ]);
+}
+
+export default function SellPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [form, setForm] = useState({ title: '', description: '', imageUrl: '', price: '', categoryPath: '', stock: '1' });
+  const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState(['M']);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) router.push('/auth');
+    else if (user.role === 'BUYER') router.push('/');
+  }, [user, router]);
+
+  useEffect(() => {
+    getCategories().then((result) => setCategories(result.categories)).catch(() => {
+      toast('Could not load product categories.', 'error');
+    });
+  }, [toast]);
+
+  const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      await createProduct({ title: form.title, description: form.description, images: form.imageUrl ? [form.imageUrl] : [], priceInRupees: form.price, categoryPath: form.categoryPath, availableSizes: selectedSizes, stockQuantity: Number(form.stock) });
+      toast('Product added to the shop. An admin can optionally create an auction for it.', 'success');
+      router.push('/shop');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not add product', 'error');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="page-container max-w-3xl">
+      <h1 className="page-title">Add a shop product</h1>
+      <p className="page-subtitle">Products are published for regular shopping. Auctions are created separately by administrators.</p>
+      <form onSubmit={submit} className="glass-card-static p-6 space-y-5">
+        <div><label className="input-label">Product title</label><input className="input-field" required value={form.title} onChange={(e) => set('title', e.target.value)} /></div>
+        <div><label className="input-label">Description</label><textarea className="input-field" required value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
+        <div><label className="input-label">Image URL</label><input className="input-field" type="url" value={form.imageUrl} onChange={(e) => set('imageUrl', e.target.value)} /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div><label className="input-label">Retail price (₹)</label><input className="input-field" type="number" min="1" required value={form.price} onChange={(e) => set('price', e.target.value)} /></div>
+          <div><label className="input-label">Category</label><select className="input-field" required value={form.categoryPath} onChange={(e) => set('categoryPath', e.target.value)}><option value="">Select a category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${'— '.repeat(category.depth)}${category.name}`}</option>)}</select></div>
+          <div><label className="input-label">Stock quantity</label><input className="input-field" type="number" min="0" required value={form.stock} onChange={(e) => set('stock', e.target.value)} /></div>
+        </div>
+        <div><label className="input-label">Available sizes</label><div className="size-options">{sizes.map((size) => <button type="button" key={size} className={selectedSizes.includes(size) ? 'active' : ''} onClick={() => setSelectedSizes((current) => current.includes(size) ? current.filter((item) => item !== size) : [...current, size])}>{size}</button>)}</div></div>
+        <button className="btn-primary" disabled={loading}>{loading ? 'Publishing…' : 'Publish to shop'}</button>
+      </form>
+    </div>
+  );
+}

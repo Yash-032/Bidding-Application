@@ -50,7 +50,7 @@ export class EnglishAuctionStratergy implements AuctionStrategy {
         const winner = sorted[0] ?? null;
 
         return {
-            winningBidId: winner.id ?? null,
+            winningBidId: winner?.id ?? null,
             winnerDeduction: winner
                 ? { userId: winner.userId, walletId: winner.userId, amount: winner.amountCredits }
                 : null,
