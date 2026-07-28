@@ -113,7 +113,7 @@ export default function AuctionDetailPage() {
   if (!product) {
     return (
       <div className="page-container text-center py-20">
-        <h2 className="text-2xl font-bold text-white mb-2">Auction Not Found</h2>
+        <h2 className="text-2xl font-bold text-black mb-2">Auction Not Found</h2>
         <p className="text-[var(--foreground-muted)]">The listing you requested does not exist or has been removed.</p>
       </div>
     );
@@ -136,7 +136,7 @@ export default function AuctionDetailPage() {
       <div className="flex items-center justify-between mb-8">
         <button
           onClick={() => router.back()}
-          className="text-sm text-[var(--foreground-muted)] hover:text-white transition-colors"
+          className="text-sm text-[var(--foreground-muted)] hover:text-black transition-colors"
         >
           &larr; Back to Catalog
         </button>
@@ -179,7 +179,7 @@ export default function AuctionDetailPage() {
               )}
             </div>
 
-            <h1 className="text-3xl font-extrabold text-white mb-4 leading-tight">{product.title}</h1>
+            <h1 className="text-3xl font-extrabold text-black mb-4 leading-tight">{product.title}</h1>
             <p className="text-[var(--foreground-muted)] leading-relaxed mb-6 whitespace-pre-wrap">
               {product.description}
             </p>
@@ -187,18 +187,18 @@ export default function AuctionDetailPage() {
             <div className="border-t border-[var(--border)] pt-6 flex items-center justify-between text-sm text-[var(--foreground-muted)]">
               <div>
                 <span className="block text-xs uppercase tracking-wider text-[var(--foreground-subtle)] font-medium">Seller Contact</span>
-                <span className="text-white font-medium">{product.seller?.email}</span>
+                <span className="text-black font-medium">{product.seller?.email}</span>
               </div>
               <div className="text-right">
                 <span className="block text-xs uppercase tracking-wider text-[var(--foreground-subtle)] font-medium">Starting Price</span>
-                <span className="font-mono text-white font-semibold">🪙 {auction?.startingPriceCredits} Credits</span>
+                <span className="font-mono text-black font-semibold">🪙 {auction?.startingPriceCredits} Credits</span>
               </div>
             </div>
           </div>
 
           {/* Bid History */}
           <div className="glass-card-static p-6">
-            <h3 className="text-lg font-bold text-white mb-4">Bid Log History</h3>
+            <h3 className="text-lg font-bold text-black mb-4">Bid Log History</h3>
             
             {auction?.bids && auction.bids.length > 0 ? (
               <div className="flow-root">
@@ -208,8 +208,8 @@ export default function AuctionDetailPage() {
                       <div className="flex items-center gap-3">
                         <span className={`w-2 h-2 rounded-full ${index === 0 && isLive ? 'bg-[var(--accent-emerald)] animate-pulse' : 'bg-[var(--border)]'}`} />
                         <div>
-                          <p className="text-sm font-semibold text-white">
-                            Bidder: {bid.userId.substring(0, 8)}...
+                          <p className="text-sm font-semibold text-black">
+                            Bidder: {bid.user.profile?.fullName || `User ${bid.user.id.slice(0, 8)}`}
                             {index === 0 && <span className="text-xs text-[var(--foreground-muted)] font-normal ml-2">(Highest)</span>}
                           </p>
                           <p className="text-xs text-[var(--foreground-subtle)]">
@@ -223,7 +223,7 @@ export default function AuctionDetailPage() {
                           bid.status === 'WON' ? 'text-[var(--accent-emerald)]' :
                           bid.status === 'OUTBID' ? 'text-[var(--foreground-muted)]' :
                           bid.status === 'LOST' ? 'text-[var(--foreground-subtle)]' :
-                          'text-white'
+                          'text-[var(--accent-emerald)]'
                         }`}>
                           {bid.status}
                         </span>
@@ -241,7 +241,7 @@ export default function AuctionDetailPage() {
         {/* Right Panel - Bidding Module */}
         <div className="space-y-6">
           <div className="glass-card p-6 border-[var(--primary)] shadow-[var(--shadow-glow)] animate-slideUp stagger-1">
-            <h3 className="text-lg font-bold text-white mb-6">Auction Panel</h3>
+            <h3 className="text-lg font-bold text-black mb-6">Auction Panel</h3>
 
             {auction ? (
               <div className="space-y-6">
@@ -260,7 +260,7 @@ export default function AuctionDetailPage() {
                   ) : isScheduled ? (
                     <span className="text-white font-semibold">Starts: {new Date(auction.startTime).toLocaleString()}</span>
                   ) : (
-                    <span className="text-white font-bold text-lg uppercase tracking-wider">{auction.status}</span>
+                    <span className="text-black font-bold text-lg uppercase tracking-wider">{auction.status}</span>
                   )}
                 </div>
 
@@ -268,7 +268,7 @@ export default function AuctionDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[var(--background-secondary)] p-3 rounded-lg border border-[var(--border)]">
                     <span className="block text-[10px] uppercase tracking-wider text-[var(--foreground-subtle)]">Current Price</span>
-                    <span className="font-mono text-white font-bold text-lg">
+                    <span className="font-mono text-gray font-bold text-lg">
                       🪙 {highestBid ? highestBid.amountCredits : auction.startingPriceCredits}
                     </span>
                   </div>
@@ -293,7 +293,7 @@ export default function AuctionDetailPage() {
                     <div>
                       <label className="input-label">Your Bid Amount</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[var(--foreground-subtle)]">🪙</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[var(--foreground-subtle)]"></span>
                         <input
                           type="number"
                           placeholder={minRequiredBid.toString()}

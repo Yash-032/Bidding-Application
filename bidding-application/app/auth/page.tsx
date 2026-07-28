@@ -73,7 +73,7 @@ function AuthContent() {
             onClick={() => setIsSignup(false)}
             className={`flex-1 pb-3 text-sm font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
               !isSignup
-                ? 'border-[var(--primary)] text-white'
+                ? 'border-[var(--primary)] text-black'
                 : 'border-transparent text-[var(--foreground-muted)] hover:text-white'
             }`}
           >
@@ -83,7 +83,7 @@ function AuthContent() {
             onClick={() => setIsSignup(true)}
             className={`flex-1 pb-3 text-sm font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
               isSignup
-                ? 'border-[var(--primary)] text-white'
+                ? 'border-[var(--primary)] text-black'
                 : 'border-transparent text-[var(--foreground-muted)] hover:text-white'
             }`}
           >

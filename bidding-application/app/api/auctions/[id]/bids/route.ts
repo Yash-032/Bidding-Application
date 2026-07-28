@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BiddingService } from '@/lib/bidding/bidding.service';
 import { requireSessionUser } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/errors';
+import { prisma } from '@/lib/prisma';
+import { publicBidUserSelect, serializeBid } from '@/lib/bidding/bid-serializer';
 
 const biddingService = new BiddingService();
 
@@ -18,11 +20,15 @@ export async function POST(req: NextRequest, { params} : { params: Promise< { id
             );
         }
 
-        const bid = await biddingService.placeBid({
+        const placedBid = await biddingService.placeBid({
             auctionId: (await params).id,
             userId: user.id,
             amountCredits: BigInt(amountCredits),
             idempotencyKey,
+        });
+        const bid = await prisma.bid.findUniqueOrThrow({
+            where: { id: placedBid.id },
+            include: { user: { select: publicBidUserSelect } },
         });
 
         return NextResponse.json({ bid: serializeBid(bid) }, { status: 201} );
@@ -30,8 +36,4 @@ export async function POST(req: NextRequest, { params} : { params: Promise< { id
         const { body, status } = toErrorResponse(err);
         return NextResponse.json(body, { status });
     }
-}
-
-function serializeBid(bid: { amountCredits: bigint; [key: string]: unknown }) {
-    return { ...bid, amountCredits: bid.amountCredits.toString() };
 }

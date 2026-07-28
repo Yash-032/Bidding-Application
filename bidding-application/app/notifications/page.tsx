@@ -96,7 +96,7 @@ export default function NotificationsPage() {
     <div className="page-container max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-10">
         <div>
-          <h1 className="page-title text-white">Notifications</h1>
+          <h1 className="page-title text-black">Notifications</h1>
           <p className="page-subtitle mb-0">Stay updated on live bidding, outbids, and balance updates.</p>
         </div>
 

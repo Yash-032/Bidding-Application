@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CatalogService } from '@/lib/catalog/catalog.service';
+import { serializeBid } from '@/lib/bidding/bid-serializer';
 import { toErrorResponse } from '@/lib/utils/errors';
 
 const catalog = new CatalogService();
@@ -15,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         minIncrement: product.auction.minIncrement.toString(),
         bidFee: product.auction.bidFee?.toString() ?? null,
         priceStepPerBid: product.auction.priceStepPerBid?.toString() ?? null,
-        bids: product.auction.bids.map((bid) => ({ ...bid, amountCredits: bid.amountCredits.toString() })),
+        bids: product.auction.bids.map(serializeBid),
       } : null,
     });
   } catch (error) {

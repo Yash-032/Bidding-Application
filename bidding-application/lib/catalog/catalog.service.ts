@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/utils/errors';
 import { normalizeCategoryPath } from '@/lib/catalog/category.service';
+import { publicBidUserSelect } from '@/lib/bidding/bid-serializer';
 
 export interface CreateProductRequest {
   sellerId: string;
@@ -74,7 +75,15 @@ export class CatalogService {
     const product = await prisma.product.findUnique({
       where: { id: productId },
       include: {
-        auction: { include: { bids: { orderBy: { amountCredits: 'desc' }, take: 10 } } },
+        auction: {
+          include: {
+            bids: {
+              orderBy: { amountCredits: 'desc' },
+              take: 10,
+              include: { user: { select: publicBidUserSelect } },
+            },
+          },
+        },
         seller: { select: { id: true, email: true } },
         categoryNode: true,
       },

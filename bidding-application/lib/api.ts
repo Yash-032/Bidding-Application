@@ -103,10 +103,17 @@ export interface ProductListItem {
   auction: ProductAuction | null;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  role: string;
+  profile: { fullName: string | null } | null;
+}
+
 export interface BidItem {
   id: string;
   auctionId: string;
-  userId: string;
+  user: User;
   amountCredits: string;
   status: string;
   idempotencyKey: string;

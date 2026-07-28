@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, toErrorResponse } from "@/lib/utils/errors";
+import { publicBidUserSelect, serializeBid } from '@/lib/bidding/bid-serializer';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -8,7 +9,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             where: { id: (await params).id },
             include: {
                 product: true,
-                bids: { orderBy: { createdAt: 'desc' }, take: 20 },
+                bids: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 20,
+                    include: { user: { select: publicBidUserSelect } },
+                },
             },
         });
 
@@ -21,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             bidFee: auction.bidFee?.toString() ?? null,
             priceStepPerBid: auction.priceStepPerBid?.toString() ?? null,
             product: { ...auction.product, priceInRupees: auction.product.priceInRupees.toString() },
-            bids: auction.bids.map((b) => ({ ...b, amountCredits: b.amountCredits.toString() })),
+            bids: auction.bids.map(serializeBid),
         });
     } catch(err) {
         const { body, status } = toErrorResponse(err);
