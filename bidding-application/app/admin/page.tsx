@@ -4,7 +4,26 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useToast } from '@/app/components/Toast';
-import { adminAdjustCredits, adminCreateAuction, adminVoidAuction, triggerActivation, triggerSettlement } from '@/lib/api';
+import {
+  adminAdjustCredits,
+  adminCreateAuction,
+  adminVoidAuction,
+  createProduct,
+  getCategories,
+  triggerActivation,
+  triggerSettlement,
+  type CategoryTreeNode,
+} from '@/lib/api';
+
+const productSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+type CategoryOption = CategoryTreeNode & { depth: number };
+
+function flattenCategories(categories: CategoryTreeNode[], depth = 0): CategoryOption[] {
+  return categories.flatMap((category) => [
+    { ...category, depth },
+    ...flattenCategories(category.children, depth + 1),
+  ]);
+}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -29,6 +48,12 @@ export default function AdminPage() {
   const [schedulingSettle, setSchedulingSettle] = useState(false);
   const [auctionForm, setAuctionForm] = useState({ productId: '', auctionModel: 'ENGLISH', startingPriceCredits: '', startTime: '', endTime: '', minIncrement: '1', bidFee: '', priceStepPerBid: '', antiSnipingWindowSeconds: '30' });
   const [creatingAuction, setCreatingAuction] = useState(false);
+  const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
+  const [productForm, setProductForm] = useState({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
+  const [imageUrls, setImageUrls] = useState(['']);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
+  const [selectedProductSizes, setSelectedProductSizes] = useState(['M']);
+  const [creatingProduct, setCreatingProduct] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -42,6 +67,42 @@ export default function AdminPage() {
     }
     setLoading(false);
   }, [user, router]);
+
+  useEffect(() => {
+    if (user?.role !== 'ADMIN') return;
+    getCategories()
+      .then((result) => setCategories(result.categories))
+      .catch((error) => toast(error instanceof Error ? error.message : 'Could not load categories', 'error'));
+  }, [user, toast]);
+
+  const handleCreateProduct = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const images = imageUrls.map((url) => url.trim()).filter(Boolean);
+    if (!images.length) return toast('Add at least one product image URL.', 'error');
+    if (!selectedProductSizes.length) return toast('Select at least one available size.', 'error');
+
+    setCreatingProduct(true);
+    try {
+      const result = await createProduct({
+        title: productForm.title.trim(),
+        description: productForm.description.trim(),
+        images,
+        priceInRupees: productForm.priceInRupees,
+        categoryPath: productForm.categoryPath,
+        availableSizes: selectedProductSizes,
+        stockQuantity: Number(productForm.stockQuantity),
+      });
+      setAuctionForm((current) => ({ ...current, productId: result.product.id }));
+      setProductForm({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
+      setImageUrls(['']);
+      setSelectedProductSizes(['M']);
+      toast(`Product created. ID: ${result.product.id}`, 'success');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not create product', 'error');
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
 
   const handleAdjustCredits = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +169,13 @@ export default function AdminPage() {
     }
   };
 
+  const previewImageUrls = imageUrls.map((url) => url.trim()).filter(Boolean);
+  const selectedPreviewImage = previewImageUrls[previewImageIndex];
+
+  useEffect(() => {
+    setPreviewImageIndex((current) => previewImageUrls.length ? Math.min(current, previewImageUrls.length - 1) : 0);
+  }, [previewImageUrls.length]);
+
   if (loading) {
     return (
       <div className="page-container flex flex-col gap-6">
@@ -121,8 +189,59 @@ export default function AdminPage() {
     <div className="page-container max-w-6xl">
       <div className="mb-10">
         <h1 className="page-title text-white">Admin Operations Portal</h1>
-        <p className="page-subtitle mb-0">System utilities, wallet adjustments, auction lifecycles, and void management.</p>
+        <p className="page-subtitle mb-0">Manage products, wallet adjustments, auction lifecycles, and void operations.</p>
       </div>
+
+      <section className="admin-product-panel glass-card-static">
+        <div className="admin-product-heading">
+          <div>
+            <p className="eyebrow">Catalog management</p>
+            <h2>Add a product</h2>
+            <p>Create a complete shop listing. The new product ID is copied into the auction form automatically.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateProduct} className="admin-product-form">
+          <div className="admin-product-fields">
+            <div className="admin-field-wide"><label className="input-label">Product title</label><input className="input-field" required value={productForm.title} onChange={(event) => setProductForm({ ...productForm, title: event.target.value })} placeholder="Classic Half Sleeve Cotton Shirt" /></div>
+            <div className="admin-field-wide"><label className="input-label">Description</label><textarea className="input-field" required value={productForm.description} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} placeholder="Describe the material, fit, finish, and intended use." /></div>
+            <div><label className="input-label">Retail price (₹)</label><input className="input-field" type="number" min="1" step="1" required value={productForm.priceInRupees} onChange={(event) => setProductForm({ ...productForm, priceInRupees: event.target.value })} /></div>
+            <div><label className="input-label">Stock quantity</label><input className="input-field" type="number" min="0" step="1" required value={productForm.stockQuantity} onChange={(event) => setProductForm({ ...productForm, stockQuantity: event.target.value })} /></div>
+            <div className="admin-field-wide"><label className="input-label">Category</label><select className="input-field" required value={productForm.categoryPath} onChange={(event) => setProductForm({ ...productForm, categoryPath: event.target.value })}><option value="">Select a leaf category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${'— '.repeat(category.depth)}${category.name} (${category.path})`}</option>)}</select></div>
+
+            <fieldset className="admin-field-wide admin-sizes">
+              <legend className="input-label">Available sizes</legend>
+              <div className="size-options">{productSizes.map((size) => <button type="button" key={size} className={selectedProductSizes.includes(size) ? 'active' : ''} onClick={() => setSelectedProductSizes((current) => current.includes(size) ? current.filter((item) => item !== size) : [...current, size])}>{size}</button>)}</div>
+            </fieldset>
+
+            <fieldset className="admin-field-wide admin-images">
+              <legend className="input-label">Product image URLs</legend>
+              {imageUrls.map((url, index) => (
+                <div className="admin-image-row" key={index}>
+                  <input className="input-field" type="url" required={index === 0} value={url} onChange={(event) => setImageUrls((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`Image ${index + 1} URL`} />
+                  {imageUrls.length > 1 && <button type="button" onClick={() => setImageUrls((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>}
+                </div>
+              ))}
+              <button className="admin-add-image" type="button" onClick={() => setImageUrls((current) => [...current, ''])}>+ Add another image URL</button>
+            </fieldset>
+            <button className="btn-primary admin-publish-product" disabled={creatingProduct}>{creatingProduct ? 'Publishing product…' : 'Publish product'}</button>
+          </div>
+
+          <aside className="admin-product-preview">
+            <p className="eyebrow">Image preview</p>
+            <div className="admin-preview-frame" aria-live="polite">
+              {selectedPreviewImage ? <img src={selectedPreviewImage} alt={`Product preview ${previewImageIndex + 1}`} /> : <span>Add image URLs to preview them here.</span>}
+            </div>
+            {previewImageUrls.length > 1 && <div className="admin-preview-navigation">
+              <button type="button" onClick={() => setPreviewImageIndex((current) => (current - 1 + previewImageUrls.length) % previewImageUrls.length)} aria-label="Previous preview image">←</button>
+              <span>{previewImageIndex + 1} / {previewImageUrls.length}</span>
+              <button type="button" onClick={() => setPreviewImageIndex((current) => (current + 1) % previewImageUrls.length)} aria-label="Next preview image">→</button>
+            </div>}
+            <strong>{productForm.title || 'Untitled product'}</strong>
+            <small>{productForm.priceInRupees ? `₹${Number(productForm.priceInRupees).toLocaleString('en-IN')}` : 'Price preview'}</small>
+          </aside>
+        </form>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slideUp">
         <div className="glass-card-static p-6 space-y-6">
@@ -146,7 +265,7 @@ export default function AdminPage() {
         {/* Left Column: Adjust Credits Form */}
         <div className="glass-card-static p-6 space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">Adjust User Credits</h3>
+            <h3 className="text-lg font-bold text-black mb-2">Adjust User Credits</h3>
             <p className="text-xs text-[var(--foreground-muted)]">Manually credit or debit user balances. Negative values debit.</p>
           </div>
 
@@ -199,7 +318,7 @@ export default function AdminPage() {
         {/* Center Column: Void Auction Form */}
         <div className="glass-card-static p-6 space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">Void / Cancel Auction</h3>
+            <h3 className="text-lg font-bold text-black mb-2">Void / Cancel Auction</h3>
             <p className="text-xs text-[var(--foreground-muted)]">Voids an auction, marks it CANCELLED, and releases/refunds all active bids.</p>
           </div>
 
@@ -240,13 +359,13 @@ export default function AdminPage() {
         {/* Right Column: LifeCycle Scheduler Task Triggers */}
         <div className="glass-card-static p-6 space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">Lifecycle Schedulers</h3>
+            <h3 className="text-lg font-bold text-black mb-2">Lifecycle Schedulers</h3>
             <p className="text-xs text-[var(--foreground-muted)]">Manually trigger automated activation and settlement engines.</p>
           </div>
 
           <div className="space-y-4">
             <div className="p-4 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)]">
-              <h4 className="font-semibold text-sm text-white mb-2">Auction Activation</h4>
+              <h4 className="font-semibold text-sm text-black mb-2">Auction Activation</h4>
               <p className="text-xs text-[var(--foreground-muted)] mb-4">
                 Looks up all scheduled auctions whose start time has passed and changes status to ACTIVE.
               </p>
@@ -260,7 +379,7 @@ export default function AdminPage() {
             </div>
 
             <div className="p-4 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)]">
-              <h4 className="font-semibold text-sm text-white mb-2">Auction Settlement</h4>
+              <h4 className="font-semibold text-sm text-black mb-2">Auction Settlement</h4>
               <p className="text-xs text-[var(--foreground-muted)] mb-4">
                 Closes expired ACTIVE auctions, assigns orders, deducts winners, and releases losers.
               </p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { addToCart, getProductDetail, type ProductDetail } from '@/lib/api';
@@ -16,24 +16,55 @@ export default function ProductPage() {
   const [size, setSize] = useState('M');
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState('');
+  const [currentImage, setCurrentImage] = useState(0);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setCurrentImage(0);
+    setDescriptionExpanded(false);
     getProductDetail(id).then(setProduct).catch(() => setProduct(null)).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="page-container">Loading garment…</div>;
   if (!product) return <div className="shop-empty"><h2>Garment not found</h2><Link href="/shop">Return to shop</Link></div>;
 
-  const image = product.images?.[0] || 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=90';
+  const images = product.images?.length ? product.images : ['https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=90'];
   const isLive = product.auction?.status === 'ACTIVE';
+  const hasLongDescription = product.description.length > 220;
+  const showImage = (index: number) => {
+    const nextIndex = (index + images.length) % images.length;
+    setCurrentImage(nextIndex);
+    galleryRef.current?.scrollTo({ left: galleryRef.current.clientWidth * nextIndex, behavior: 'smooth' });
+  };
   return (
     <div className="product-detail">
-      <div className="detail-image"><img src={image} alt={product.title} /></div>
-      <div className="detail-copy">
+      <div className="detail-image">
+        <div className="detail-carousel-track" ref={galleryRef} tabIndex={0} aria-label={`Swipeable image gallery for ${product.title}`} onScroll={(event) => {
+          const width = event.currentTarget.clientWidth;
+          if (width) setCurrentImage(Math.min(images.length - 1, Math.max(0, Math.round(event.currentTarget.scrollLeft / width))));
+        }}>
+          {images.map((imageUrl, index) => (
+            <figure className="detail-gallery-item" key={`${imageUrl}-${index}`}>
+              <img src={imageUrl} alt={`${product.title} view ${index + 1}`} />
+            </figure>
+          ))}
+        </div>
+        {images.length > 1 && <div className="detail-carousel-controls">
+          <button type="button" onClick={() => showImage(currentImage - 1)} aria-label="Previous product image">←</button>
+          <div className="detail-carousel-dots" aria-label={`Image ${currentImage + 1} of ${images.length}`}>{images.map((_, index) => <button type="button" key={index} className={index === currentImage ? 'active' : ''} onClick={() => showImage(index)} aria-label={`View image ${index + 1}`} />)}</div>
+          <span>{String(currentImage + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
+          <button type="button" onClick={() => showImage(currentImage + 1)} aria-label="Next product image">→</button>
+        </div>}
+      </div>
+      <div className={`detail-copy${descriptionExpanded ? ' detail-copy-scrollable' : ''}`}>
         <Link href="/shop" className="back-link">← Back to shop</Link>
         <p className="eyebrow">The Reserve collection</p><h1>{product.title}</h1>
         <p className="detail-price">₹{Number(product.priceInRupees).toLocaleString('en-IN')}</p>
-        <p className="detail-description">{product.description}</p>
+        <div className="detail-description-wrap">
+          <p className={`detail-description${descriptionExpanded ? ' expanded' : ''}`}>{product.description}</p>
+          {hasLongDescription && <button type="button" className="detail-description-toggle" aria-expanded={descriptionExpanded} onClick={() => setDescriptionExpanded((expanded) => !expanded)}>{descriptionExpanded ? 'Show less' : 'Show more'}</button>}
+        </div>
         <div className="size-heading"><span>Select size</span><button>Size guide</button></div>
         <div className="size-options">{product.availableSizes.map((item) => <button className={size === item ? 'active' : ''} onClick={() => setSize(item)} key={item}>{item}</button>)}</div>
         <button className="detail-buy" disabled={adding || product.stockQuantity < 1} onClick={async () => {
