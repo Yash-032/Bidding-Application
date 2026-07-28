@@ -7,7 +7,10 @@ const categories = new CategoryService();
 
 export async function GET() {
   try {
-    return NextResponse.json({ categories: await categories.listTree() });
+    return NextResponse.json(
+      { categories: await categories.listTree() },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } },
+    );
   } catch (error) {
     const { body, status } = toErrorResponse(error);
     return NextResponse.json(body, { status });

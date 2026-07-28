@@ -3,6 +3,7 @@
    ============================ */
 
 const API_BASE = '';
+const inFlightGets = new Map<string, Promise<unknown>>();
 
 /* ---- Token management ---- */
 export function getToken(): string | null {
@@ -21,16 +22,29 @@ export function clearToken() {
 /* ---- Typed fetch wrapper ---- */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(init?.headers as Record<string, string>),
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const method = (init?.method || 'GET').toUpperCase();
+  const execute = async () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init?.headers as Record<string, string>),
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  const data = await res.json();
-  if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong', res.status);
-  return data as T;
+    const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+    const data = await res.json();
+    if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong', res.status);
+    return data as T;
+  };
+
+  if (method !== 'GET') return execute();
+
+  const requestKey = `${token || 'anonymous'}:${path}`;
+  const existing = inFlightGets.get(requestKey);
+  if (existing) return existing as Promise<T>;
+
+  const request = execute().finally(() => inFlightGets.delete(requestKey));
+  inFlightGets.set(requestKey, request);
+  return request;
 }
 
 export class ApiError extends Error {
@@ -174,11 +188,22 @@ export interface CartItem {
   id: string;
   size: string;
   quantity: number;
-  product: ProductListItem;
+  product: {
+    id: string;
+    title: string;
+    images: string[];
+    priceInRupees: string;
+    category: string;
+    categoryId: string | null;
+    categoryNode: Pick<CategorySummary, 'id' | 'name' | 'path'> | null;
+    availableSizes: string[];
+    stockQuantity: number;
+    isActive: boolean;
+  };
 }
 export interface CartData { id: string; items: CartItem[] }
 export const getCart = () => apiFetch<CartData>('/api/cart');
-export const addToCart = (productId: string, size: string, quantity = 1) => apiFetch<CartData>('/api/cart', { method: 'POST', body: JSON.stringify({ productId, size, quantity }) });
+export const addToCart = (productId: string, size: string, quantity = 1) => apiFetch<{ added: true; itemId: string }>('/api/cart', { method: 'POST', body: JSON.stringify({ productId, size, quantity }) });
 export const updateCartItem = (itemId: string, quantity: number) => apiFetch<CartData>('/api/cart', { method: 'PATCH', body: JSON.stringify({ itemId, quantity }) });
 export const removeCartItem = (itemId: string) => apiFetch<CartData>(`/api/cart?itemId=${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 

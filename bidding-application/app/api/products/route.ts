@@ -26,7 +26,11 @@ export async function GET(req: NextRequest) {
       endingSoon: query.get('endingSoon') === 'true',
       page: Number(query.get('page') || 1),
     });
-    return NextResponse.json({ products: products.map(serialize) });
+    const containsLiveAuctionState = query.get('auctionsOnly') === 'true' || query.get('endingSoon') === 'true';
+    return NextResponse.json(
+      { products: products.map(serialize) },
+      { headers: { 'Cache-Control': containsLiveAuctionState ? 'public, s-maxage=5, stale-while-revalidate=15' : 'public, s-maxage=30, stale-while-revalidate=120' } },
+    );
   } catch (error) {
     const { body, status } = toErrorResponse(error);
     return NextResponse.json(body, { status });
