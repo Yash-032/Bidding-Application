@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { protectedImageConfig } from '@/lib/protected-images/config';
 import { validateTileClaims } from '@/lib/protected-images/access';
 import { checkRateLimit, consumeNonce } from '@/lib/protected-images/redis';
 import { readImageSession } from '@/lib/protected-images/session';
 import { getPrivateObject } from '@/lib/protected-images/storage';
-import type { StoredVariants, StoredTile } from '@/lib/protected-images/types';
 import { sha256 } from '@/lib/protected-images/crypto';
 
 export const runtime = 'nodejs';
@@ -45,19 +43,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       checkRateLimit(`network:${networkKey}`, protectedImageConfig.rateLimitPerMinute * 4),
     ]);
     if (!sessionAllowed || !networkAllowed) return reject('rate_limited', 429);
-    if (!await consumeNonce(nonce, sessionId)) return reject('missing_reused_or_cross_session_nonce', 410);
+    const grant = await consumeNonce(nonce, sessionId);
+    if (!grant) return reject('missing_reused_or_cross_session_nonce', 410);
+    if (grant.imageId !== imageId || grant.tileId !== tileId) {
+      return reject('modified_tile_grant', 403);
+    }
 
-    const image = await prisma.productImage.findUnique({
-      where: { id: imageId },
-      select: { status: true, variants: true, product: { select: { isActive: true } } },
-    });
-    if (!image || image.status === 'DELETED' || (image.status === 'ACTIVE' && !image.product?.isActive)) return reject('unauthorized_image', 404);
-    const tile = Object.values(image.variants as StoredVariants)
-      .flatMap((variant) => variant.tiles)
-      .find((candidate: StoredTile) => candidate.id === tileId);
-    if (!tile) return reject('unknown_tile', 404);
-
-    const payload = await getPrivateObject(tile.storageKey);
+    const payload = await getPrivateObject(grant.storageKey);
     console.info(JSON.stringify({ event: 'protected_image_tile_served', imageId, tileId, bytes: payload.length }));
     return new NextResponse(payload, {
       headers: {

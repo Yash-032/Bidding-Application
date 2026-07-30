@@ -14,10 +14,40 @@ async function client() {
   return globalRedis.protectedImageRedisConnect;
 }
 
-export async function issueNonce(nonce: string, sessionId: string, ttlSeconds: number) {
+export type TileNonceGrant = {
+  sessionId: string;
+  imageId: string;
+  tileId: string;
+  storageKey: string;
+};
+
+export type TileNonceGrantEntry = {
+  nonce: string;
+  grant: TileNonceGrant;
+};
+
+export async function issueNonceGrants(entries: TileNonceGrantEntry[], ttlSeconds: number) {
   const redis = await client();
-  const result = await redis.set(`protected-image:nonce:${nonce}`, sessionId, { NX: true, EX: ttlSeconds });
-  if (result !== 'OK') throw new Error('Could not atomically issue tile nonce');
+  const transaction = redis.multi();
+  for (const entry of entries) {
+    transaction.set(
+      `protected-image:nonce:${entry.nonce}`,
+      JSON.stringify(entry.grant),
+      { NX: true, EX: ttlSeconds },
+    );
+  }
+  const results = await transaction.exec();
+  if (results.some((result) => String(result) !== 'OK')) {
+    throw new Error('Could not atomically issue tile nonces');
+  }
+}
+
+export async function issueNonce(
+  nonce: string,
+  grant: TileNonceGrant,
+  ttlSeconds: number,
+) {
+  await issueNonceGrants([{ nonce, grant }], ttlSeconds);
 }
 
 export async function consumeNonce(nonce: string, sessionId: string) {
@@ -31,8 +61,23 @@ export async function consumeNonceAtomically(
   sessionId: string,
 ) {
   // GETDEL is a single atomic Redis operation. A URL cannot win this check twice.
-  const owner = await redis.sendCommand(['GETDEL', `protected-image:nonce:${nonce}`]);
-  return owner !== null && String(owner) === sessionId;
+  const serializedGrant = await redis.sendCommand(['GETDEL', `protected-image:nonce:${nonce}`]);
+  if (serializedGrant === null) return null;
+
+  try {
+    const grant = JSON.parse(String(serializedGrant)) as Partial<TileNonceGrant>;
+    if (
+      grant.sessionId !== sessionId ||
+      typeof grant.imageId !== 'string' ||
+      typeof grant.tileId !== 'string' ||
+      typeof grant.storageKey !== 'string'
+    ) {
+      return null;
+    }
+    return grant as TileNonceGrant;
+  } catch {
+    return null;
+  }
 }
 
 export async function checkRateLimit(sessionId: string, limit: number) {

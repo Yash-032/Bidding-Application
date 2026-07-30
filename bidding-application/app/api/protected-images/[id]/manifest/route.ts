@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth/session';
 import { protectedImageConfig } from '@/lib/protected-images/config';
 import { chooseVariant } from '@/lib/protected-images/processor';
-import { issueNonce } from '@/lib/protected-images/redis';
+import {
+  issueNonceGrants,
+  type TileNonceGrantEntry,
+} from '@/lib/protected-images/redis';
 import { signTile } from '@/lib/protected-images/crypto';
 import { IMAGE_SESSION_COOKIE, getOrCreateImageSession } from '@/lib/protected-images/session';
 import type { StoredVariants } from '@/lib/protected-images/types';
@@ -38,16 +41,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { sessionId, isNew } = getOrCreateImageSession(request);
     const expiresAt = Math.floor(Date.now() / 1000) + protectedImageConfig.manifestTtlSeconds;
-    const tiles = await Promise.all(shuffle(variant.tiles).map(async (tile) => {
+    const preparedTiles = shuffle(variant.tiles).map((tile) => {
       const nonce = randomUUID();
-      await issueNonce(nonce, sessionId, protectedImageConfig.manifestTtlSeconds);
+      return {
+        tile,
+        nonce,
+        grant: {
+          sessionId,
+          imageId: image.id,
+          tileId: tile.id,
+          storageKey: tile.storageKey,
+        },
+      };
+    });
+    await issueNonceGrants(
+      preparedTiles.map(
+        ({ nonce, grant }): TileNonceGrantEntry => ({ nonce, grant }),
+      ),
+      protectedImageConfig.manifestTtlSeconds,
+    );
+    const tiles = preparedTiles.map(({ tile, nonce }) => {
       const signature = signTile({ imageId: image.id, tileId: tile.id, nonce, expiresAt, sessionId });
       return {
         id: tile.id, x: tile.x, y: tile.y, width: tile.width, height: tile.height,
         sha256: tile.sha256, decodeKey: tile.decodeKey,
         url: `/api/protected-images/${image.id}/tile/${tile.id}?n=${encodeURIComponent(nonce)}&e=${expiresAt}&s=${encodeURIComponent(signature)}`,
       };
-    }));
+    });
     const response = NextResponse.json({
       imageId: image.id,
       width: variant.width,

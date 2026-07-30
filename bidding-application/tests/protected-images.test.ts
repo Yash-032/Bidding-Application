@@ -69,7 +69,13 @@ describe('upload processing', () => {
 describe('atomic nonce contract', () => {
   it('uses one Redis GETDEL and allows a nonce exactly once', async () => {
     const { consumeNonceAtomically } = await import('../lib/protected-images/redis');
-    const values = new Map([['protected-image:nonce:one', 'session-a']]);
+    const grant = {
+      sessionId: 'session-a',
+      imageId: 'image-a',
+      tileId: 'tile-a',
+      storageKey: 'image-a/variant/tile-a',
+    };
+    const values = new Map([['protected-image:nonce:one', JSON.stringify(grant)]]);
     const commands: string[][] = [];
     const fakeRedis = {
       async sendCommand(command: string[]) {
@@ -79,8 +85,8 @@ describe('atomic nonce contract', () => {
         return value;
       },
     };
-    expect(await consumeNonceAtomically(fakeRedis, 'one', 'session-a')).toBe(true);
-    expect(await consumeNonceAtomically(fakeRedis, 'one', 'session-a')).toBe(false);
+    expect(await consumeNonceAtomically(fakeRedis, 'one', 'session-a')).toEqual(grant);
+    expect(await consumeNonceAtomically(fakeRedis, 'one', 'session-a')).toBeNull();
     expect(commands).toEqual([
       ['GETDEL', 'protected-image:nonce:one'],
       ['GETDEL', 'protected-image:nonce:one'],
