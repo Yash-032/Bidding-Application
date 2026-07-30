@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { addToCart, getProductDetail, type ProductDetail } from '@/lib/api';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import ProtectedProductImage from '@/app/components/ProtectedProductImage';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +30,7 @@ export default function ProductPage() {
   if (loading) return <div className="page-container">Loading garment…</div>;
   if (!product) return <div className="shop-empty"><h2>Garment not found</h2><Link href="/shop">Return to shop</Link></div>;
 
-  const images = product.images?.length ? product.images : ['https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=90'];
+  const images = product.protectedImages;
   const isLive = product.auction?.status === 'ACTIVE';
   const hasLongDescription = product.description.length > 220;
   const showImage = (index: number) => {
@@ -44,9 +45,9 @@ export default function ProductPage() {
           const width = event.currentTarget.clientWidth;
           if (width) setCurrentImage(Math.min(images.length - 1, Math.max(0, Math.round(event.currentTarget.scrollLeft / width))));
         }}>
-          {images.map((imageUrl, index) => (
-            <figure className="detail-gallery-item" key={`${imageUrl}-${index}`}>
-              <img src={imageUrl} alt={`${product.title} view ${index + 1}`} />
+          {images.map((image, index) => (
+            <figure className="detail-gallery-item" key={image.id}>
+              <ProtectedProductImage image={image} alt={`${product.title} view ${index + 1}`} className="protected-contain" eager={index === 0} />
             </figure>
           ))}
         </div>

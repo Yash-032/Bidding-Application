@@ -7,8 +7,10 @@ const catalog = new CatalogService();
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const product = await catalog.getProductDetail((await params).id);
+    const { images: _legacyImages, ...safeProduct } = product;
+    void _legacyImages;
     return NextResponse.json({
-      ...product,
+      ...safeProduct,
       priceInRupees: product.priceInRupees.toString(),
       auction: product.auction ? {
         ...product.auction,

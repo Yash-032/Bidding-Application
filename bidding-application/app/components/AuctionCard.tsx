@@ -3,16 +3,16 @@
 import Link from 'next/link';
 import { type ProductListItem } from '@/lib/api';
 import CountdownTimer from './CountdownTimer';
+import ProtectedProductImage from './ProtectedProductImage';
 
 export default function AuctionCard({ product }: { product: ProductListItem }) {
   const auction = product.auction;
   const isLive = auction?.status === 'ACTIVE';
-  const imageUrl = product.images?.[0] || 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=900&q=85';
 
   return (
     <article className="product-card">
       <Link href={`/products/${product.id}`} className="product-image">
-        <img src={imageUrl} alt={product.title} />
+        <ProtectedProductImage image={product.protectedImages[0]} alt={product.title} />
         {isLive && <span className="status-label is-live">Live auction available</span>}
         <span className="quick-view">View piece</span>
       </Link>

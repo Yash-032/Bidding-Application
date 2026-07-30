@@ -4,17 +4,23 @@ import { CatalogService } from '@/lib/catalog/catalog.service';
 import { toErrorResponse } from '@/lib/utils/errors';
 
 const catalog = new CatalogService();
-const serialize = (product: any) => ({
-  ...product,
-  priceInRupees: product.priceInRupees.toString(),
-  auction: product.auction ? {
-    ...product.auction,
-    startingPriceCredits: product.auction.startingPriceCredits.toString(),
-    minIncrement: product.auction.minIncrement.toString(),
-    bidFee: product.auction.bidFee?.toString() ?? null,
-    priceStepPerBid: product.auction.priceStepPerBid?.toString() ?? null,
-  } : null,
-});
+type ProductForSerialization = Awaited<ReturnType<CatalogService['listProducts']>>[number];
+
+const serialize = (source: ProductForSerialization) => {
+  const { images: _legacyImages, ...product } = source;
+  void _legacyImages;
+  return {
+    ...product,
+    priceInRupees: product.priceInRupees.toString(),
+    auction: product.auction ? {
+      ...product.auction,
+      startingPriceCredits: product.auction.startingPriceCredits.toString(),
+      minIncrement: product.auction.minIncrement.toString(),
+      bidFee: product.auction.bidFee?.toString() ?? null,
+      priceStepPerBid: product.auction.priceStepPerBid?.toString() ?? null,
+    } : null,
+  };
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,13 +52,13 @@ export async function POST(req: NextRequest) {
       sellerId: user.id,
       title: body.title,
       description: body.description,
-      images: body.images || [],
+      protectedImageIds: body.protectedImageIds || [],
       priceInRupees: BigInt(body.priceInRupees),
       categoryPath: body.categoryPath || body.category,
       availableSizes: body.availableSizes || [],
       stockQuantity: Number(body.stockQuantity),
     });
-    return NextResponse.json({ product: serialize({ ...product, auction: null }) }, { status: 201 });
+    return NextResponse.json({ product: serialize({ ...product, auction: null, categoryNode: null }) }, { status: 201 });
   } catch (error) {
     const { body, status } = toErrorResponse(error);
     return NextResponse.json(body, { status });

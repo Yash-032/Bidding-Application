@@ -3,74 +3,44 @@ import { prisma } from '@/lib/prisma';
 import { requireSessionClaims } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/errors';
 
-type CartRow = {
-  cartId: string;
-  itemId: string | null;
-  size: string | null;
-  quantity: number | null;
-  productId: string | null;
-  title: string | null;
-  images: string[] | null;
-  priceInRupees: bigint | null;
-  category: string | null;
-  categoryId: string | null;
-  categoryName: string | null;
-  categoryPath: string | null;
-  availableSizes: string[] | null;
-  stockQuantity: number | null;
-  isActive: boolean | null;
-};
-
 async function getCartForUser(userId: string) {
-  const rows = await prisma.$queryRaw<CartRow[]>`
-    SELECT
-      c."id" AS "cartId",
-      ci."id" AS "itemId",
-      ci."size",
-      ci."quantity",
-      p."id" AS "productId",
-      p."title",
-      p."images",
-      p."priceInRupees",
-      p."category",
-      p."categoryId",
-      category."name" AS "categoryName",
-      category."path" AS "categoryPath",
-      p."availableSizes",
-      p."stockQuantity",
-      p."isActive"
-    FROM "Cart" c
-    LEFT JOIN "CartItem" ci ON ci."cartId" = c."id"
-    LEFT JOIN "Product" p ON p."id" = ci."productId"
-    LEFT JOIN "Category" category ON category."id" = p."categoryId"
-    WHERE c."userId" = ${userId}
-    ORDER BY ci."createdAt" DESC
-  `;
-  if (!rows.length) {
-    const cart = await prisma.cart.create({ data: { userId }, select: { id: true } });
-    return { id: cart.id, items: [] };
+  const cart = await prisma.cart.findUnique({
+    where: { userId },
+    include: {
+      items: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          product: {
+            include: {
+              categoryNode: { select: { id: true, name: true, path: true } },
+              protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!cart) {
+    const created = await prisma.cart.create({ data: { userId }, select: { id: true } });
+    return { id: created.id, items: [] };
   }
   return {
-    id: rows[0].cartId,
-    items: rows.filter((row) => row.itemId && row.productId).map((row) => ({
-      id: row.itemId!,
-      size: row.size!,
-      quantity: row.quantity!,
+    id: cart.id,
+    items: cart.items.map((item) => ({
+      id: item.id,
+      size: item.size,
+      quantity: item.quantity,
       product: {
-        id: row.productId!,
-        title: row.title!,
-        images: row.images ?? [],
-        priceInRupees: row.priceInRupees!.toString(),
-        category: row.category!,
-        categoryId: row.categoryId,
-        categoryNode: row.categoryId ? {
-          id: row.categoryId,
-          name: row.categoryName!,
-          path: row.categoryPath!,
-        } : null,
-        availableSizes: row.availableSizes ?? [],
-        stockQuantity: row.stockQuantity ?? 0,
-        isActive: row.isActive ?? false,
+        id: item.product.id,
+        title: item.product.title,
+        protectedImages: item.product.protectedImages,
+        priceInRupees: item.product.priceInRupees.toString(),
+        category: item.product.category,
+        categoryId: item.product.categoryId,
+        categoryNode: item.product.categoryNode,
+        availableSizes: item.product.availableSizes,
+        stockQuantity: item.product.stockQuantity,
+        isActive: item.product.isActive,
       },
     })),
   };

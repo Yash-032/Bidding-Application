@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useToast } from '@/app/components/Toast';
-import { createProduct, getCategories, type CategoryTreeNode } from '@/lib/api';
+import { createProduct, getCategories, uploadProductImages, type CategoryTreeNode } from '@/lib/api';
 
 const sizes = ['XS', 'S', 'M', 'L', 'XL'];
 type CategoryOption = CategoryTreeNode & { depth: number };
@@ -20,7 +20,8 @@ export default function SellPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [form, setForm] = useState({ title: '', description: '', imageUrl: '', price: '', categoryPath: '', stock: '1' });
+  const [form, setForm] = useState({ title: '', description: '', price: '', categoryPath: '', stock: '1' });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
   const [selectedSizes, setSelectedSizes] = useState(['M']);
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,9 @@ export default function SellPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      await createProduct({ title: form.title, description: form.description, images: form.imageUrl ? [form.imageUrl] : [], priceInRupees: form.price, categoryPath: form.categoryPath, availableSizes: selectedSizes, stockQuantity: Number(form.stock) });
+      if (!imageFiles.length) throw new Error('Upload at least one product image');
+      const protectedUpload = await uploadProductImages(imageFiles);
+      await createProduct({ title: form.title, description: form.description, protectedImageIds: protectedUpload.images.map((image) => image.id), priceInRupees: form.price, categoryPath: form.categoryPath, availableSizes: selectedSizes, stockQuantity: Number(form.stock) });
       toast('Product added to the shop. An admin can optionally create an auction for it.', 'success');
       router.push('/shop');
     } catch (error) {
@@ -56,7 +59,7 @@ export default function SellPage() {
       <form onSubmit={submit} className="glass-card-static p-6 space-y-5">
         <div><label className="input-label">Product title</label><input className="input-field" required value={form.title} onChange={(e) => set('title', e.target.value)} /></div>
         <div><label className="input-label">Description</label><textarea className="input-field" required value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
-        <div><label className="input-label">Image URL</label><input className="input-field" type="url" value={form.imageUrl} onChange={(e) => set('imageUrl', e.target.value)} /></div>
+        <div><label className="input-label">Protected product images</label><input className="input-field" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple required onChange={(event) => setImageFiles(Array.from(event.target.files ?? []))} /><small>Files are kept private and tiled automatically.</small></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div><label className="input-label">Retail price (₹)</label><input className="input-field" type="number" min="1" required value={form.price} onChange={(e) => set('price', e.target.value)} /></div>
           <div><label className="input-label">Category</label><select className="input-field" required value={form.categoryPath} onChange={(e) => set('categoryPath', e.target.value)}><option value="">Select a category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${'— '.repeat(category.depth)}${category.name}`}</option>)}</select></div>

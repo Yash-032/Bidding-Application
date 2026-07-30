@@ -1,5 +1,12 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Protected product images
+
+Product images use the mandatory private tiled-image pipeline. See
+[`docs/protected-product-images.md`](docs/protected-product-images.md) for required
+Redis/storage configuration, deployment, legacy migration, tests, and the explicit
+security-versus-deterrence boundary.
+
 ## Getting Started
 
 First, run the development server:

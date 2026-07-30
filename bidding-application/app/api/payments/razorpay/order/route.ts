@@ -19,7 +19,13 @@ export async function POST(request: NextRequest) {
 
     const cart = await prisma.cart.findUnique({
       where: { userId: user.id },
-      include: { items: { include: { product: true } } },
+      include: {
+        items: {
+          include: {
+            product: { include: { protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true } } } },
+          },
+        },
+      },
     });
     if (!cart?.items.length) return NextResponse.json({ error: 'Your shopping bag is empty' }, { status: 400 });
 
@@ -34,7 +40,7 @@ export async function POST(request: NextRequest) {
       return {
         productId: item.productId,
         productTitle: item.product.title,
-        productImage: item.product.images[0] || null,
+        productImage: item.product.protectedImages[0]?.id || null,
         size: item.size,
         quantity: item.quantity,
         unitPricePaise,

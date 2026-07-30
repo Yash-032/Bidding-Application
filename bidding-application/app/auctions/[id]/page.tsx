@@ -6,6 +6,7 @@ import { useAuth } from '@/app/contexts/AuthContext';
 import { useToast } from '@/app/components/Toast';
 import { getProductDetail, watchAuction, unwatchAuction, placeBid, getWallet, type ProductDetail } from '@/lib/api';
 import CountdownTimer from '@/app/components/CountdownTimer';
+import ProtectedProductImage from '@/app/components/ProtectedProductImage';
 
 export default function AuctionDetailPage() {
   const params = useParams();
@@ -159,10 +160,11 @@ export default function AuctionDetailPage() {
           {/* Main Info Card */}
           <div className="glass-card-static p-6 overflow-hidden">
             <div className="relative aspect-video w-full bg-black/40 rounded-lg overflow-hidden mb-6">
-              <img
-                src={product.images?.[0] || 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=800&auto=format&fit=crop&q=80'}
+              <ProtectedProductImage
+                image={product.protectedImages[0]}
                 alt={product.title}
-                className="object-cover w-full h-full"
+                className="w-full h-full"
+                eager
               />
             </div>
 

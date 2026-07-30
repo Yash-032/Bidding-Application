@@ -4,7 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useToast } from '@/app/components/Toast';
+import ProtectedProductImage from '@/app/components/ProtectedProductImage';
 import {
+  ApiError,
   adminAdjustCredits,
   adminCreateAuction,
   adminVoidAuction,
@@ -12,7 +14,9 @@ import {
   getCategories,
   triggerActivation,
   triggerSettlement,
+  uploadProductImages,
   type CategoryTreeNode,
+  type ProtectedImageRef,
 } from '@/lib/api';
 
 const productSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -27,7 +31,7 @@ function flattenCategories(categories: CategoryTreeNode[], depth = 0): CategoryO
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -50,8 +54,10 @@ export default function AdminPage() {
   const [creatingAuction, setCreatingAuction] = useState(false);
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
   const [productForm, setProductForm] = useState({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
-  const [imageUrls, setImageUrls] = useState(['']);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [protectedUploads, setProtectedUploads] = useState<ProtectedImageRef[]>([]);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedProductSizes, setSelectedProductSizes] = useState(['M']);
   const [creatingProduct, setCreatingProduct] = useState(false);
 
@@ -75,10 +81,36 @@ export default function AdminPage() {
       .catch((error) => toast(error instanceof Error ? error.message : 'Could not load categories', 'error'));
   }, [user, toast]);
 
+  const handleImageSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    setImageFiles(files);
+    setProtectedUploads([]);
+    setPreviewImageIndex(0);
+    if (!files.length) return;
+
+    setUploadingImages(true);
+    try {
+      const result = await uploadProductImages(files);
+      setProtectedUploads(result.images);
+      toast(`${result.images.length} image${result.images.length === 1 ? '' : 's'} protected and ready to preview.`, 'success');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        logout();
+        toast('Your admin session expired after the security configuration changed. Log in again.', 'error');
+        router.push('/auth');
+        return;
+      }
+      toast(error instanceof Error ? error.message : 'Could not protect the selected images', 'error');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
   const handleCreateProduct = async (event: React.FormEvent) => {
     event.preventDefault();
-    const images = imageUrls.map((url) => url.trim()).filter(Boolean);
-    if (!images.length) return toast('Add at least one product image URL.', 'error');
+    if (!imageFiles.length) return toast('Upload at least one product image.', 'error');
+    if (uploadingImages) return toast('Wait for image protection to finish.', 'error');
+    if (protectedUploads.length !== imageFiles.length) return toast('Select the images again so every file can be protected.', 'error');
     if (!selectedProductSizes.length) return toast('Select at least one available size.', 'error');
 
     setCreatingProduct(true);
@@ -86,7 +118,7 @@ export default function AdminPage() {
       const result = await createProduct({
         title: productForm.title.trim(),
         description: productForm.description.trim(),
-        images,
+        protectedImageIds: protectedUploads.map((image) => image.id),
         priceInRupees: productForm.priceInRupees,
         categoryPath: productForm.categoryPath,
         availableSizes: selectedProductSizes,
@@ -94,10 +126,18 @@ export default function AdminPage() {
       });
       setAuctionForm((current) => ({ ...current, productId: result.product.id }));
       setProductForm({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
-      setImageUrls(['']);
+      setImageFiles([]);
+      setProtectedUploads([]);
+      setPreviewImageIndex(0);
       setSelectedProductSizes(['M']);
       toast(`Product created. ID: ${result.product.id}`, 'success');
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        logout();
+        toast('Your admin session expired. Log in again before publishing.', 'error');
+        router.push('/auth');
+        return;
+      }
       toast(error instanceof Error ? error.message : 'Could not create product', 'error');
     } finally {
       setCreatingProduct(false);
@@ -169,13 +209,6 @@ export default function AdminPage() {
     }
   };
 
-  const previewImageUrls = imageUrls.map((url) => url.trim()).filter(Boolean);
-  const selectedPreviewImage = previewImageUrls[previewImageIndex];
-
-  useEffect(() => {
-    setPreviewImageIndex((current) => previewImageUrls.length ? Math.min(current, previewImageUrls.length - 1) : 0);
-  }, [previewImageUrls.length]);
-
   if (loading) {
     return (
       <div className="page-container flex flex-col gap-6">
@@ -188,7 +221,7 @@ export default function AdminPage() {
   return (
     <div className="page-container max-w-6xl">
       <div className="mb-10">
-        <h1 className="page-title text-white">Admin Operations Portal</h1>
+        <h1 className="page-title text-black">Admin Operations Portal</h1>
         <p className="page-subtitle mb-0">Manage products, wallet adjustments, auction lifecycles, and void operations.</p>
       </div>
 
@@ -215,27 +248,23 @@ export default function AdminPage() {
             </fieldset>
 
             <fieldset className="admin-field-wide admin-images">
-              <legend className="input-label">Product image URLs</legend>
-              {imageUrls.map((url, index) => (
-                <div className="admin-image-row" key={index}>
-                  <input className="input-field" type="url" required={index === 0} value={url} onChange={(event) => setImageUrls((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`Image ${index + 1} URL`} />
-                  {imageUrls.length > 1 && <button type="button" onClick={() => setImageUrls((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>}
-                </div>
-              ))}
-              <button className="admin-add-image" type="button" onClick={() => setImageUrls((current) => [...current, ''])}>+ Add another image URL</button>
+              <legend className="input-label">Product images</legend>
+              <input className="input-field" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple required onChange={handleImageSelection} />
             </fieldset>
-            <button className="btn-primary admin-publish-product" disabled={creatingProduct}>{creatingProduct ? 'Publishing product…' : 'Publish product'}</button>
+            <button className="btn-primary admin-publish-product" disabled={creatingProduct || uploadingImages || protectedUploads.length !== imageFiles.length}>{uploadingImages ? 'Protecting images…' : creatingProduct ? 'Publishing product…' : 'Publish product'}</button>
           </div>
 
           <aside className="admin-product-preview">
-            <p className="eyebrow">Image preview</p>
+            <p className="eyebrow">Uploads</p>
             <div className="admin-preview-frame" aria-live="polite">
-              {selectedPreviewImage ? <img src={selectedPreviewImage} alt={`Product preview ${previewImageIndex + 1}`} /> : <span>Add image URLs to preview them here.</span>}
+              {protectedUploads[previewImageIndex]
+                ? <ProtectedProductImage image={protectedUploads[previewImageIndex]} alt={`${productForm.title || 'Product'} preview ${previewImageIndex + 1}`} className="protected-contain" eager />
+                : <span>{uploadingImages ? 'Protecting and tiling images…' : imageFiles.length ? 'Image protection failed. Select the files again.' : 'Choose product image files.'}</span>}
             </div>
-            {previewImageUrls.length > 1 && <div className="admin-preview-navigation">
-              <button type="button" onClick={() => setPreviewImageIndex((current) => (current - 1 + previewImageUrls.length) % previewImageUrls.length)} aria-label="Previous preview image">←</button>
-              <span>{previewImageIndex + 1} / {previewImageUrls.length}</span>
-              <button type="button" onClick={() => setPreviewImageIndex((current) => (current + 1) % previewImageUrls.length)} aria-label="Next preview image">→</button>
+            {protectedUploads.length > 1 && <div className="admin-preview-navigation">
+              <button type="button" onClick={() => setPreviewImageIndex((current) => (current - 1 + protectedUploads.length) % protectedUploads.length)} aria-label="Previous preview image">←</button>
+              <span>{previewImageIndex + 1} / {protectedUploads.length}</span>
+              <button type="button" onClick={() => setPreviewImageIndex((current) => (current + 1) % protectedUploads.length)} aria-label="Next preview image">→</button>
             </div>}
             <strong>{productForm.title || 'Untitled product'}</strong>
             <small>{productForm.priceInRupees ? `₹${Number(productForm.priceInRupees).toLocaleString('en-IN')}` : 'Price preview'}</small>

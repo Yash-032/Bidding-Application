@@ -105,7 +105,7 @@ export interface ProductListItem {
   sellerId: string;
   title: string;
   description: string;
-  images: string[];
+  protectedImages: ProtectedImageRef[];
   priceInRupees: string;
   category: string;
   categoryId: string | null;
@@ -115,6 +115,12 @@ export interface ProductListItem {
   isActive: boolean;
   createdAt: string;
   auction: ProductAuction | null;
+}
+
+export interface ProtectedImageRef {
+  id: string;
+  width: number;
+  height: number;
 }
 
 export interface User {
@@ -156,7 +162,7 @@ export async function getProductDetail(id: string) {
 export async function createProduct(body: {
   title: string;
   description: string;
-  images: string[];
+  protectedImageIds: string[];
   priceInRupees: string;
   categoryPath: string;
   availableSizes: string[];
@@ -166,6 +172,20 @@ export async function createProduct(body: {
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+export async function uploadProductImages(files: File[]) {
+  const token = getToken();
+  const form = new FormData();
+  files.forEach((file) => form.append('images', file));
+  const response = await fetch('/api/product-images/upload', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const data = await response.json();
+  if (!response.ok) throw new ApiError(data.error ?? 'Could not protect product images', response.status);
+  return data as { images: ProtectedImageRef[] };
 }
 
 export interface CategorySummary {
@@ -191,7 +211,7 @@ export interface CartItem {
   product: {
     id: string;
     title: string;
-    images: string[];
+    protectedImages: ProtectedImageRef[];
     priceInRupees: string;
     category: string;
     categoryId: string | null;
@@ -235,7 +255,7 @@ export interface AuctionDetail {
   priceStepPerBid: string | null;
   antiSnipingWindowSeconds: number;
   version: number;
-  product: { id: string; sellerId: string; title: string; description: string; images: string[]; priceInRupees: string; createdAt: string };
+  product: { id: string; sellerId: string; title: string; description: string; protectedImages: ProtectedImageRef[]; priceInRupees: string; createdAt: string };
   bids: BidItem[];
 }
 

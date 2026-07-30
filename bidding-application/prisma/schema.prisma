@@ -191,6 +191,8 @@ model PaymentTransaction {
     seller         User      @relation(fields: [sellerId], references: [id])
     title          String
     description    String
+    // Legacy-only source URLs. New application code never reads or writes this
+    // column; `protectedImages` is the sole product-image source of truth.
     images         String[]
     priceInRupees  BigInt
     category       String    @default("OTHER")
@@ -205,9 +207,27 @@ model PaymentTransaction {
     storeOrders     StoreOrder[]
     cartItems       CartItem[]
     storeOrderItems StoreOrderItem[]
+    protectedImages ProductImage[]
 
     @@index([categoryId])
   }
+
+model ProductImage {
+  id            String   @id @default(uuid())
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploaderId    String
+  sortOrder     Int      @default(0)
+  width         Int
+  height        Int
+  originalKey   String   @unique
+  variants      Json
+  status        String   @default("STAGED")
+  createdAt     DateTime @default(now())
+
+  @@index([productId, sortOrder])
+  @@index([uploaderId, status])
+}
 
 model Category {
   id        String     @id @default(uuid())
