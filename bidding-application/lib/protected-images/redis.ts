@@ -87,3 +87,67 @@ export async function checkRateLimit(sessionId: string, limit: number) {
   if (count === 1) await redis.expire(key, 70);
   return count <= limit;
 }
+
+const consumeGrantWithLimitsScript = `
+local sessionCount = redis.call('INCR', KEYS[1])
+if sessionCount == 1 then redis.call('EXPIRE', KEYS[1], 70) end
+local networkCount = redis.call('INCR', KEYS[2])
+if networkCount == 1 then redis.call('EXPIRE', KEYS[2], 70) end
+if sessionCount > tonumber(ARGV[2]) or networkCount > tonumber(ARGV[3]) then
+  return { 'rate_limited' }
+end
+
+local serializedGrant = redis.call('GET', KEYS[3])
+if not serializedGrant then return { 'invalid_nonce' } end
+local decoded, grant = pcall(cjson.decode, serializedGrant)
+if not decoded or grant.sessionId ~= ARGV[1] then
+  return { 'invalid_nonce' }
+end
+redis.call('DEL', KEYS[3])
+return { 'ok', serializedGrant }
+`;
+
+export async function consumeTileGrantWithRateLimits(input: {
+  nonce: string;
+  sessionId: string;
+  networkKey: string;
+  sessionLimit: number;
+  networkLimit: number;
+}): Promise<
+  | { status: 'ok'; grant: TileNonceGrant }
+  | { status: 'rate_limited' | 'invalid_nonce' }
+> {
+  const redis = await client();
+  const minute = Math.floor(Date.now() / 60_000);
+  const result = await redis.eval(consumeGrantWithLimitsScript, {
+    keys: [
+      `protected-image:rate:session:${input.sessionId}:${minute}`,
+      `protected-image:rate:network:${input.networkKey}:${minute}`,
+      `protected-image:nonce:${input.nonce}`,
+    ],
+    arguments: [
+      input.sessionId,
+      String(input.sessionLimit),
+      String(input.networkLimit),
+    ],
+  }) as unknown[];
+  const status = String(result[0]);
+  if (status !== 'ok') {
+    return { status: status === 'rate_limited' ? 'rate_limited' : 'invalid_nonce' };
+  }
+
+  try {
+    const grant = JSON.parse(String(result[1])) as TileNonceGrant;
+    if (
+      grant.sessionId !== input.sessionId ||
+      typeof grant.imageId !== 'string' ||
+      typeof grant.tileId !== 'string' ||
+      typeof grant.storageKey !== 'string'
+    ) {
+      return { status: 'invalid_nonce' };
+    }
+    return { status: 'ok', grant };
+  } catch {
+    return { status: 'invalid_nonce' };
+  }
+}

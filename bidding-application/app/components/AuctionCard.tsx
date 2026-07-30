@@ -18,7 +18,7 @@ export default function AuctionCard({ product }: { product: ProductListItem }) {
       </Link>
       <div className="product-info">
         <div>
-          <p className="product-kicker">{isLive ? 'Available to buy or bid' : product.categoryNode?.name || 'The Reserve collection'}</p>
+          <p className="product-kicker">{isLive ? 'Available to buy or bid' : product.categoryNode?.name || 'Quick Fashion collection'}</p>
           <h3><Link href={`/products/${product.id}`}>{product.title}</Link></h3>
         </div>
         <p className="product-price">₹{Number(product.priceInRupees || 0).toLocaleString('en-IN')}</p>

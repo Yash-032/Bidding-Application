@@ -67,12 +67,20 @@ export async function processProductImage(input: Buffer) {
           }
           const tileId = randomId();
           const storageKey = `${imageId}/${randomId(24)}`;
-          const protectedTile = obfuscateRawTile(rawTile);
+          // Lossless WebP keeps the reconstructed pixels exact while avoiding
+          // the very large raw-RGBA transfer previously used for every tile.
+          // The complete compressed payload is then obfuscated, so its stored
+          // and network forms do not expose a recognizable image header.
+          const compressedTile = await sharp(rawTile, {
+            raw: { width, height, channels: 4 },
+          }).webp({ lossless: true, effort: 3 }).toBuffer();
+          const protectedTile = obfuscateRawTile(compressedTile);
           await putPrivateObject(storageKey, protectedTile.encoded);
           variant.tiles.push({
             id: tileId, x, y, width, height, storageKey,
             sha256: protectedTile.sha256,
             decodeKey: protectedTile.decodeKey,
+            codec: 'webp-lossless',
           });
         }
       }

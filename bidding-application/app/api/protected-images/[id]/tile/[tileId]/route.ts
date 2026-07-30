@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { protectedImageConfig } from '@/lib/protected-images/config';
 import { validateTileClaims } from '@/lib/protected-images/access';
-import { checkRateLimit, consumeNonce } from '@/lib/protected-images/redis';
+import { consumeTileGrantWithRateLimits } from '@/lib/protected-images/redis';
 import { readImageSession } from '@/lib/protected-images/session';
 import { getPrivateObject } from '@/lib/protected-images/storage';
 import { sha256 } from '@/lib/protected-images/crypto';
@@ -38,13 +38,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ?? request.headers.get('x-real-ip')
       ?? 'unknown';
     const networkKey = sha256(Buffer.from(forwardedFor)).slice(0, 24);
-    const [sessionAllowed, networkAllowed] = await Promise.all([
-      checkRateLimit(`session:${sessionId}`, protectedImageConfig.rateLimitPerMinute),
-      checkRateLimit(`network:${networkKey}`, protectedImageConfig.rateLimitPerMinute * 4),
-    ]);
-    if (!sessionAllowed || !networkAllowed) return reject('rate_limited', 429);
-    const grant = await consumeNonce(nonce, sessionId);
-    if (!grant) return reject('missing_reused_or_cross_session_nonce', 410);
+    const access = await consumeTileGrantWithRateLimits({
+      nonce,
+      sessionId,
+      networkKey,
+      sessionLimit: protectedImageConfig.rateLimitPerMinute,
+      networkLimit: protectedImageConfig.rateLimitPerMinute * 4,
+    });
+    if (access.status !== 'ok') {
+      return access.status === 'rate_limited'
+        ? reject('rate_limited', 429)
+        : reject('missing_reused_or_cross_session_nonce', 410);
+    }
+    const { grant } = access;
     if (grant.imageId !== imageId || grant.tileId !== tileId) {
       return reject('modified_tile_grant', 403);
     }

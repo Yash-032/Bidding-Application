@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       razorpayOrderId: gatewayOrder.id,
       amount: Number(order.totalPaise),
       currency: order.currency,
-      productName: `${orderItems.length} item${orderItems.length === 1 ? '' : 's'} from The Reserve`,
+      productName: `${orderItems.length} item${orderItems.length === 1 ? '' : 's'} from Quick Fashion`,
       customer: { name: delivery.name, email: delivery.email, contact: delivery.phone },
     });
   } catch (error) {

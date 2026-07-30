@@ -11,6 +11,7 @@ type ManifestTile = {
   height: number;
   sha256: string;
   decodeKey: string;
+  codec?: 'webp-lossless';
   url: string;
 };
 
@@ -21,6 +22,10 @@ type Manifest = {
   expiresAt: number;
   tiles: ManifestTile[];
 };
+
+type DecodedTile =
+  | { tile: ManifestTile; bitmap: ImageBitmap; pixels?: never }
+  | { tile: ManifestTile; pixels: Uint8ClampedArray<ArrayBuffer>; bitmap?: never };
 
 function fromBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -116,7 +121,7 @@ export default function ProtectedProductImage({
           const manifest = await manifestResponse.json() as Manifest;
           if (manifest.imageId !== current.id || manifest.expiresAt * 1000 <= Date.now()) throw new Error('Invalid manifest');
 
-          const decodedTiles = await Promise.all(manifest.tiles.map(async (tile) => {
+          const decodedTiles = await Promise.all(manifest.tiles.map(async (tile): Promise<DecodedTile> => {
             const response = await fetch(tile.url, { credentials: 'same-origin', cache: 'no-store', signal });
             if (!response.ok || response.headers.get('content-type') !== 'application/octet-stream') {
               throw new Error(`Tile ${response.status}`);
@@ -124,12 +129,23 @@ export default function ProtectedProductImage({
             const encoded = await response.arrayBuffer();
             if (await sha256Hex(encoded) !== tile.sha256) throw new Error('Tile integrity failure');
             const protectedBytes = new Uint8Array(encoded);
-            if (protectedBytes.length !== 16 + tile.width * tile.height * 4) throw new Error('Tile length failure');
+            if (protectedBytes.length <= 16) throw new Error('Tile length failure');
             const key = fromBase64Url(tile.decodeKey);
-            const pixels = new Uint8ClampedArray(protectedBytes.length - 16);
+            const decoded = new Uint8Array(protectedBytes.length - 16);
             for (let index = 16; index < protectedBytes.length; index += 1) {
-              pixels[index - 16] = protectedBytes[index] ^ key[(index - 16) % key.length];
+              decoded[index - 16] = protectedBytes[index] ^ key[(index - 16) % key.length];
             }
+            if (tile.codec === 'webp-lossless') {
+              const bitmap = await createImageBitmap(new Blob([decoded], { type: 'image/webp' }));
+              if (bitmap.width !== tile.width || bitmap.height !== tile.height) {
+                bitmap.close();
+                throw new Error('Tile dimension failure');
+              }
+              return { tile, bitmap };
+            }
+            if (decoded.length !== tile.width * tile.height * 4) throw new Error('Tile length failure');
+            const pixels: Uint8ClampedArray<ArrayBuffer> = new Uint8ClampedArray(decoded.length);
+            pixels.set(decoded);
             return { tile, pixels };
           }));
 
@@ -139,8 +155,17 @@ export default function ProtectedProductImage({
           const context = canvas.getContext('2d', { alpha: true });
           if (!context) throw new Error('Canvas unavailable');
           context.clearRect(0, 0, manifest.width, manifest.height);
-          for (const { tile, pixels } of decodedTiles) {
-            context.putImageData(new ImageData(pixels, tile.width, tile.height), tile.x, tile.y);
+          for (const decodedTile of decodedTiles) {
+            if (decodedTile.bitmap) {
+              context.drawImage(decodedTile.bitmap, decodedTile.tile.x, decodedTile.tile.y);
+              decodedTile.bitmap.close();
+            } else {
+              context.putImageData(
+                new ImageData(decodedTile.pixels, decodedTile.tile.width, decodedTile.tile.height),
+                decodedTile.tile.x,
+                decodedTile.tile.y,
+              );
+            }
           }
           if (!active || signal.aborted) return;
           renderedWidth = manifest.width;

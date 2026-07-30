@@ -60,7 +60,7 @@ export default function ProductPage() {
       </div>
       <div className={`detail-copy${descriptionExpanded ? ' detail-copy-scrollable' : ''}`}>
         <Link href="/shop" className="back-link">← Back to shop</Link>
-        <p className="eyebrow">The Reserve collection</p><h1>{product.title}</h1>
+        <p className="eyebrow">Quick Fashion collection</p><h1>{product.title}</h1>
         <p className="detail-price">₹{Number(product.priceInRupees).toLocaleString('en-IN')}</p>
         <div className="detail-description-wrap">
           <p className={`detail-description${descriptionExpanded ? ' expanded' : ''}`}>{product.description}</p>

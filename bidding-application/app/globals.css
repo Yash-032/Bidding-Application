@@ -85,7 +85,7 @@ h1, h2, h3, .display-font { font-family: var(--font-display), Georgia, serif; }
 .nav-left,.nav-right { display:flex; align-items:center; gap:24px; }
 .nav-right { justify-content:flex-end; }
 .nav-left a,.nav-right a,.nav-right button { color:#1d231f; font:500 11px var(--font-inter); text-transform:uppercase; letter-spacing:.12em; background:none; border:0; cursor:pointer; }
-.brand-wordmark { font:600 23px var(--font-display); letter-spacing:.2em; color:#1d231f; white-space:nowrap; }
+.brand-wordmark { font:600 23px var(--font-display); letter-spacing:0.01em; color:#1d231f; white-space:nowrap; }
 .category-bar { height:42px; background:#fbfaf7; display:flex; justify-content:center; align-items:center; gap:40px; border-bottom:1px solid #e5e1d9; }
 .category-bar a { font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:#4b4e4a; }
 .mobile-nav { display:none; }

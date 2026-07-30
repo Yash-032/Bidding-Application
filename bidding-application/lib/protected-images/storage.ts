@@ -19,6 +19,10 @@ export function getPrivateObject(key: string) {
   return readFile(resolvePrivateKey(key));
 }
 
+export async function deletePrivateObject(key: string) {
+  await rm(resolvePrivateKey(key), { force: true });
+}
+
 export async function deletePrivatePrefix(prefix: string) {
   const target = resolvePrivateKey(prefix);
   await rm(target, { recursive: true, force: true });

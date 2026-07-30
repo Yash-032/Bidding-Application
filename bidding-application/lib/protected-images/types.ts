@@ -7,6 +7,7 @@ export type StoredTile = {
   storageKey: string;
   sha256: string;
   decodeKey: string;
+  codec?: 'webp-lossless';
 };
 
 export type StoredVariant = {

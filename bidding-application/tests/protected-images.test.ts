@@ -39,11 +39,13 @@ describe('upload processing', () => {
       const variant = Object.values(image.variants)[0];
       expect(variant.tiles).toHaveLength(16);
       for (const tile of variant.tiles) {
+        expect(tile.codec).toBe('webp-lossless');
         expect(tile.id).toMatch(/^[a-z0-9_-]+$/);
         expect(tile.sha256).toMatch(/^[a-f0-9]{64}$/);
         expect(tile.storageKey).not.toMatch(/\.(png|jpe?g|webp|avif)$/i);
         const bytes = await getPrivateObject(tile.storageKey);
         expect(bytes.subarray(0, 8)).not.toEqual(input.subarray(0, 8));
+        expect(bytes.length).toBeLessThan(16 + tile.width * tile.height * 4);
       }
       expect(await getPrivateObject(image.originalKey)).toEqual(input);
     } finally {

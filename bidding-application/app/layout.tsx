@@ -4,7 +4,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ToastProvider } from "./components/Toast";
 import Navbar from "./components/Navbar"
 export const metadata: Metadata = {
-  title: "The Reserve - Curated Garments & Private Auctions",
+  title: "Quick Fashion",
   description: "Shop considered garments by category with secure direct checkout, plus selected administrator-controlled auctions.",
 };
 

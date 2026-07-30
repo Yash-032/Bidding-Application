@@ -104,7 +104,7 @@ export default function Home() {
 
       <footer className="site-footer">
         <div>
-          <p className="brand-wordmark footer-mark">THE RESERVE</p>
+          <p className="brand-wordmark footer-mark">Quick Fashion</p>
           <p className="footer-note">A curated house of modern garments and exceptional auctions.</p>
         </div>
         <div><h4>Shop</h4><Link href="/shop">New arrivals</Link><Link href="/categories">All categories</Link><Link href="/shop?category=bottoms">Bottoms</Link></div>
