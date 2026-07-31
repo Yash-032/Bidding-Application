@@ -168,6 +168,7 @@ h1, h2, h3, .display-font { font-family: var(--font-display), Georgia, serif; }
 .form-grid .wide { grid-column:1/-1; }
 .payment-note { font-size:12px; color:#6e716d; margin-bottom:20px; }
 .pay-button { width:100%; border:0; background:#1c2e25; color:white; padding:17px; text-transform:uppercase; letter-spacing:.15em; font-size:10px; cursor:pointer; }
+.mock-pay-button { margin-top:10px; background:#795b20; }
 .integration-message { margin-top:12px; padding:12px; background:#ebe5d9; font-size:11px; color:#574e42; }
 .order-summary { padding:100px 5vw; background:#e9e4da; border-left:1px solid #d2ccc2; }
 .order-summary h2 { font-size:34px; font-weight:400; margin-bottom:26px; }

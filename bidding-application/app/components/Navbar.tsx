@@ -15,7 +15,7 @@ export default function Navbar() {
           <div className="nav-left">
             <Link href="/categories">Categories</Link><Link href="/shop">Shop all</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/auctions">Auction</Link>
           </div>
-          <Link href="/" className="brand-wordmark" aria-label="Quick Fashion home">Quick Fashion</Link>
+          <Link href="/" className="brand-wordmark" aria-label="The Reserve home">Quick Fashion</Link>
           <div className="nav-right">
             {user?.role === 'ADMIN' && <Link href="/admin">Admin</Link>}
             {user && <Link href="/profile">Profile</Link>}
