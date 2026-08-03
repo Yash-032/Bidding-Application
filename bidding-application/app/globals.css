@@ -134,9 +134,12 @@ h1, h2, h3, .display-font { font-family: var(--font-display), Georgia, serif; }
 .product-info h3 { font:500 20px var(--font-display); }
 .product-price { font-size:11px; white-space:nowrap; padding-top:16px; }
 .card-timer { padding:10px 0; border-top:1px solid #d0cbc2; display:flex; justify-content:space-between; font-size:10px; text-transform:uppercase; letter-spacing:.1em; }
-.card-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:auto; }
-.product-skeleton { height:560px; }
-.center-action { display:flex; justify-content:center; margin-top:54px; }
+.product-skeleton {
+  height: 560px;
+  background: linear-gradient(135deg, #ded9cf 0%, #eae6dd 40%, #e0dbc5 70%, #d8d3c7 100%);
+  background-size: 240% 240%;
+  animation: meshPulse 3.5s ease infinite;
+}
 .empty-editorial { max-width:580px; margin:auto; padding:70px 20px; border:1px solid #cfc8bd; text-align:center; }
 .empty-editorial h3 { font-size:34px; font-weight:400; margin-bottom:12px; }
 .service-strip { display:grid; grid-template-columns:repeat(3,1fr); padding:48px 7vw; border-top:1px solid #d8d3ca; background:#f8f6f1; text-align:center; }
@@ -653,6 +656,12 @@ textarea.input-field {
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+@keyframes meshPulse {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes countdown-pulse {

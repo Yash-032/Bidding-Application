@@ -91,7 +91,7 @@ export default function Home() {
             <p>Join our private list to be first to shop the release.</p>
           </div>
         )}
-        <div className="center-action">
+        <div className="flex justify-center w-full mt-8 pt-12">
           <Link href="/shop" className="button-dark">Shop all garments</Link>
         </div>
       </section>

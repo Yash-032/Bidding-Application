@@ -48,6 +48,37 @@ function delay(milliseconds: number, signal: AbortSignal) {
   });
 }
 
+function renderPlaceholder(placeholder: HTMLElement, state: 'loading' | 'error', hasImage: boolean) {
+  if (!hasImage || state === 'error') {
+    placeholder.innerHTML = `
+      <div class="tile-loader error">
+        <div class="error-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/>
+            <path d="M9 9l6 6M15 9l-6 6"/>
+          </svg>
+        </div>
+        <div class="loader-text">
+          <span class="loader-title">Image unavailable</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  placeholder.innerHTML = `
+    <div class="tile-loader">
+      <div class="loader-spinner">
+        <div class="spinner-track"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <div class="loader-text">
+        <span class="loader-title">Loading image</span>
+      </div>
+    </div>
+  `;
+}
+
 export default function ProtectedProductImage({
   image,
   alt,
@@ -73,21 +104,95 @@ export default function ProtectedProductImage({
     shadow.replaceChildren();
     const style = document.createElement('style');
     style.textContent = `
-      :host { display:block; position:relative; overflow:hidden; background:#ddd7ce; user-select:none; -webkit-user-select:none; }
+      :host { display:block; position:relative; overflow:hidden; background:#e4dfd6; user-select:none; -webkit-user-select:none; }
       .frame { position:absolute; inset:0; overflow:hidden; }
-      .placeholder { position:absolute; inset:0; display:grid; place-items:center; color:#777a76; background:linear-gradient(110deg,#ded9cf 25%,#ebe7df 40%,#ded9cf 55%); background-size:240% 100%; animation:pulse 1.5s infinite; font:500 10px/1.2 system-ui; letter-spacing:.12em; text-transform:uppercase; }
+      .placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #575a55;
+        background: linear-gradient(135deg, #ded9cf 0%, #eae6dd 40%, #e0dbc5 70%, #d8d3c7 100%);
+        background-size: 240% 240%;
+        animation: meshPulse 3.5s ease infinite;
+        z-index: 2;
+        transition: opacity 0.35s ease;
+      }
+      .tile-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 16px;
+        text-align: center;
+      }
+      .loader-spinner {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .spinner-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid rgba(28, 46, 37, 0.12);
+      }
+      .spinner-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid transparent;
+        border-top-color: #1c2e25;
+        border-right-color: rgba(28, 46, 37, 0.4);
+        animation: spinRing 0.85s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+      }
+      .loader-text {
+        display: flex;
+        align-items: center;
+      }
+      .loader-title {
+        font: 600 10px/1.2 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #1c2e25;
+      }
+      .tile-loader.error .error-icon {
+        color: #777269;
+        opacity: 0.75;
+      }
+      .tile-loader.error .loader-title {
+        color: #777269;
+        letter-spacing: 0.12em;
+      }
       canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; }
       :host(.protected-contain) canvas { object-fit:contain; }
       .ready canvas { display:block; }
       .ready .placeholder { display:none; }
-      @keyframes pulse { to { background-position-x:-240%; } }
-      @media (prefers-reduced-motion:reduce) { .placeholder { animation:none; } }
+
+      @keyframes spinRing {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes meshPulse {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @media (prefers-reduced-motion:reduce) {
+        .spinner-ring, .placeholder { animation:none; }
+      }
     `;
     const frame = document.createElement('div');
     frame.className = 'frame';
     const placeholder = document.createElement('div');
     placeholder.className = 'placeholder';
-    placeholder.textContent = image ? 'Loading image' : 'Image unavailable';
+    renderPlaceholder(placeholder, 'loading', Boolean(image));
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     frame.append(placeholder, canvas);
@@ -105,7 +210,7 @@ export default function ProtectedProductImage({
       controller = new AbortController();
       const { signal } = controller;
       frame.classList.remove('ready');
-      placeholder.textContent = 'Loading image';
+      renderPlaceholder(placeholder, 'loading', Boolean(current));
       const requestedWidth = Math.max(160, Math.ceil(host.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 2)));
 
       for (let attempt = 0; attempt < 3 && !signal.aborted; attempt += 1) {
@@ -170,7 +275,7 @@ export default function ProtectedProductImage({
           if (!active || signal.aborted) return;
           renderedWidth = manifest.width;
           frame.classList.add('ready');
-          placeholder.textContent = '';
+          placeholder.innerHTML = '';
           return;
         } catch (error) {
           if (signal.aborted) return;
@@ -178,7 +283,7 @@ export default function ProtectedProductImage({
           frame.classList.remove('ready');
           if (attempt < 2) await delay(250 * (2 ** attempt), signal);
           else {
-            placeholder.textContent = 'Image unavailable';
+            renderPlaceholder(placeholder, 'error', false);
             console.warn('[protected-image] render failed', error instanceof Error ? error.message : error);
           }
         }
