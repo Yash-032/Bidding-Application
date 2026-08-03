@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return {
         id: tile.id, x: tile.x, y: tile.y, width: tile.width, height: tile.height,
         sha256: tile.sha256, decodeKey: tile.decodeKey, codec: tile.codec,
-        url: `/api/protected-images/${image.id}/tile/${tile.id}?n=${encodeURIComponent(nonce)}&e=${expiresAt}&s=${encodeURIComponent(signature)}`,
+        url: `/api/protected-image-tiles/${image.id}/${tile.id}?n=${encodeURIComponent(nonce)}&e=${expiresAt}&s=${encodeURIComponent(signature)}`,
       };
     });
     const response = NextResponse.json({
