@@ -11,6 +11,11 @@ import {
 import { signTile } from '@/lib/protected-images/crypto';
 import { IMAGE_SESSION_COOKIE, getOrCreateImageSession } from '@/lib/protected-images/session';
 import type { StoredVariants } from '@/lib/protected-images/types';
+import {
+  ensureCatalogImageIsProtected,
+  hasRenderableVariants,
+  isCatalogSourceKey,
+} from '@/lib/protected-images/compatibility';
 
 export const runtime = 'nodejs';
 
@@ -35,8 +40,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
     if (!authorized) return NextResponse.json({ error: 'Protected image not found' }, { status: 404 });
 
+    const renderableImage = isCatalogSourceKey(image.originalKey) && !hasRenderableVariants(image.variants)
+      ? await ensureCatalogImageIsProtected(image)
+      : image;
     const requestedWidth = Math.max(160, Math.min(4096, Number(request.nextUrl.searchParams.get('w') || 960)));
-    const variant = chooseVariant(image.variants as StoredVariants, requestedWidth);
+    const variant = chooseVariant(renderableImage.variants as StoredVariants, requestedWidth);
     if (!variant) throw new Error('Protected image has no renderable variants');
 
     const { sessionId, isNew } = getOrCreateImageSession(request);
@@ -48,7 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         nonce,
         grant: {
           sessionId,
-          imageId: image.id,
+          imageId: renderableImage.id,
           tileId: tile.id,
           storageKey: tile.storageKey,
         },
@@ -61,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       protectedImageConfig.manifestTtlSeconds,
     );
     const tiles = preparedTiles.map(({ tile, nonce }) => {
-      const signature = signTile({ imageId: image.id, tileId: tile.id, nonce, expiresAt, sessionId });
+      const signature = signTile({ imageId: renderableImage.id, tileId: tile.id, nonce, expiresAt, sessionId });
       return {
         id: tile.id, x: tile.x, y: tile.y, width: tile.width, height: tile.height,
         sha256: tile.sha256, decodeKey: tile.decodeKey, codec: tile.codec,
@@ -69,7 +77,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       };
     });
     const response = NextResponse.json({
-      imageId: image.id,
+      imageId: renderableImage.id,
       width: variant.width,
       height: variant.height,
       grid: protectedImageConfig.grid,

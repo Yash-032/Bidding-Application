@@ -88,6 +88,21 @@ export async function checkRateLimit(sessionId: string, limit: number) {
   return count <= limit;
 }
 
+export async function acquireCatalogCompatibilityLock(imageId: string) {
+  const redis = await client();
+  const result = await redis.set(
+    `protected-image:catalog-migration:${imageId}`,
+    '1',
+    { NX: true, EX: 120 },
+  );
+  return result === 'OK';
+}
+
+export async function releaseCatalogCompatibilityLock(imageId: string) {
+  const redis = await client();
+  await redis.del(`protected-image:catalog-migration:${imageId}`);
+}
+
 const consumeGrantWithLimitsScript = `
 local sessionCount = redis.call('INCR', KEYS[1])
 if sessionCount == 1 then redis.call('EXPIRE', KEYS[1], 70) end

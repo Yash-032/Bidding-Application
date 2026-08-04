@@ -66,6 +66,18 @@ describe('upload processing', () => {
       await deletePrivatePrefix(image.id);
     }
   }, 15_000);
+
+  it('resolves catalog: source keys within the shared private media directory', async () => {
+    const { putPrivateObject, getPrivateObject, deletePrivateObject } = await import('../lib/protected-images/storage');
+    const key = 'catalog:test-category/test-product/source.jpg';
+    const payload = Buffer.from('catalog-source');
+    await putPrivateObject(key, payload);
+    try {
+      expect(await getPrivateObject(key)).toEqual(payload);
+    } finally {
+      await deletePrivateObject(key);
+    }
+  });
 });
 
 describe('atomic nonce contract', () => {

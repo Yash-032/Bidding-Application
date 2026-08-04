@@ -17,7 +17,7 @@ function isAllowedProductImage(metadata: ImageMetadata) {
     && (metadata.compression === 'av1' || metadata.mediaType === 'image/avif');
 }
 
-export async function processProductImage(input: Buffer) {
+export async function processProductImage(input: Buffer, options?: { imageId?: string }) {
   if (!input.length || input.length > protectedImageConfig.maxUploadBytes) {
     throw new ValidationError(`Image must be no larger than ${Math.floor(protectedImageConfig.maxUploadBytes / 1024 / 1024)} MB`);
   }
@@ -34,7 +34,7 @@ export async function processProductImage(input: Buffer) {
     throw new ValidationError(`Detected ${detected}; upload a JPEG, PNG, WebP, or AVIF product image`);
   }
 
-  const imageId = randomUUID();
+  const imageId = options?.imageId ?? randomUUID();
   const originalKey = `${imageId}/${randomId(24)}`;
   const variants: StoredVariants = {};
   try {
