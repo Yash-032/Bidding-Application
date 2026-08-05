@@ -47,7 +47,7 @@ export default function FitPage() {
 
             <a
               className="btn-primary inline-block mt-6"
-              href="http://localhost:3001"
+              href={`${pixaLoginUrl}/`}
             >
               Upload photos to complete measurements
             </a>
@@ -58,7 +58,6 @@ export default function FitPage() {
               Your latest measurements are synced from Pixa and ready for fit
               recommendations.
             </p>
-
             <a
               className="btn-primary inline-block mt-6"
               href="/shop"

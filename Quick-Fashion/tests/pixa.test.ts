@@ -33,6 +33,14 @@ describe('Pixa authorization safeguards', () => {
     expect(source).toContain("status: 'PHOTO_REQUIRED'");
   });
 
+  it('reuses an authenticated local Pixa link or measurement before redirecting externally', async () => {
+    const source = await (await import('node:fs/promises')).readFile('app/api/auth/pixa/login/route.ts', 'utf8');
+    expect(source).toContain('getSessionUser(request)');
+    expect(source).toContain('pixaSubjectId: true');
+    expect(source).toContain('if (user?.pixaSubjectId || user?.measurement)');
+    expect(source).toContain('return NextResponse.redirect(new URL(');
+  });
+
   it('requires an authenticated session for measurement access', async () => {
     const source = await (await import('node:fs/promises')).readFile('app/api/measurements/me/route.ts', 'utf8');
     expect(source).toContain('requireSessionUser(request)');
