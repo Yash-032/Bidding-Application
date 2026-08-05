@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       categoryPath: body.categoryPath || body.category,
       availableSizes: body.availableSizes || [],
       stockQuantity: Number(body.stockQuantity),
+      fitMeasurements: body.fitMeasurements || {},
     });
     return NextResponse.json({ product: serialize({ ...product, auction: null, categoryNode: null }) }, { status: 201 });
   } catch (error) {

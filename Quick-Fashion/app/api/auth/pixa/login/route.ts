@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
   if (session) {
     const user = await prisma.user.findUnique({
       where: { id: session.id },
-      select: { pixaSubjectId: true, measurement: { select: { status: true } } },
+      select: { pixaSubjectId: true, measurement: { select: { status: true } }, pixaConnection: { select: { id: true } } },
     });
-    if (user?.pixaSubjectId || user?.measurement) {
+    if (user?.pixaConnection && (user.pixaSubjectId || user.measurement)) {
       const suffix = user.measurement?.status === 'PHOTO_REQUIRED' || !user.measurement ? '?measurements=required' : '';
       return NextResponse.redirect(new URL(`/fit${suffix}`, request.url));
     }

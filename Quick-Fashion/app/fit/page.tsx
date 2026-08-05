@@ -37,7 +37,7 @@ export default function FitPage() {
         <h1 className="page-title">Your measurement connection</h1>
 
         {loading ? (
-          <p>Checking your Pixa profile…</p>
+          <p>Checking your Pixa profile</p>
         ) : needsPhotos ? (
           <>
             <p className="page-subtitle">
@@ -60,7 +60,7 @@ export default function FitPage() {
             </p>
             <a
               className="btn-primary inline-block mt-6"
-              href="/shop"
+              href="/shop/my-fit"
             >
               Find garments for my fit
             </a>

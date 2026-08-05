@@ -11,6 +11,7 @@ export interface CreateProductRequest {
   categoryPath: string;
   availableSizes: string[];
   stockQuantity: number;
+  fitMeasurements?: Record<string, number>;
 }
 
 export class CatalogService {
@@ -19,6 +20,9 @@ export class CatalogService {
     if (!Number.isInteger(req.stockQuantity) || req.stockQuantity < 0) throw new ValidationError('Stock must be a non-negative whole number');
     if (!req.availableSizes.length) throw new ValidationError('Select at least one available size');
     if (!req.protectedImageIds.length) throw new ValidationError('Upload at least one protected product image');
+    const measurements = ['shoulderWidth', 'chest', 'waist', 'hip', 'neck', 'sleeveLength', 'armLength', 'thigh', 'calf'] as const;
+    const fitMeasurements = req.fitMeasurements;
+    const hasFitMeasurements = !!fitMeasurements && measurements.every((field) => Number.isFinite(fitMeasurements[field]) && fitMeasurements[field] > 0);
     if (req.protectedImageIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) {
       throw new ValidationError('Public image URLs are forbidden; use protected image uploads');
     }
@@ -48,6 +52,11 @@ export class CatalogService {
           stockQuantity: req.stockQuantity,
         },
       });
+      if (hasFitMeasurements && fitMeasurements) {
+        await tx.productFitProfile.create({ data: { productId: product.id, shoulderWidth: fitMeasurements.shoulderWidth, chest: fitMeasurements.chest, waist: fitMeasurements.waist, hip: fitMeasurements.hip, neck: fitMeasurements.neck, sleeveLength: fitMeasurements.sleeveLength, armLength: fitMeasurements.armLength, thigh: fitMeasurements.thigh, calf: fitMeasurements.calf } });
+        const vector = `[${measurements.map((field) => fitMeasurements![field]).join(',')}]`;
+        await tx.$executeRawUnsafe('UPDATE "ProductFitProfile" SET "fitVector" = $1::vector WHERE "productId" = $2', vector, product.id);
+      }
       await Promise.all(req.protectedImageIds.map((id, sortOrder) => tx.productImage.update({
         where: { id },
         data: { productId: product.id, sortOrder, status: 'ACTIVE' },

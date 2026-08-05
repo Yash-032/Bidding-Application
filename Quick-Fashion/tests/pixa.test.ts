@@ -17,7 +17,7 @@ describe('Pixa authorization safeguards', () => {
     process.env.MOCK_PIXA_PROFILE = JSON.stringify({ sub: 'pixa-1', email: 'pixa@example.test' });
     process.env.MOCK_PIXA_CODE_EXPIRES_AT = new Date(Date.now() + 60_000).toISOString();
     let adapter = await import('@/lib/pixa/adapter');
-    await expect(adapter.exchangePixaCode('single-use-code')).resolves.toMatchObject({ sub: 'pixa-1' });
+    await expect(adapter.exchangePixaCode('single-use-code')).resolves.toMatchObject({ profile: { sub: 'pixa-1' } });
     await expect(adapter.exchangePixaCode('single-use-code')).rejects.toThrow(/already used/);
     vi.resetModules();
     process.env.MOCK_PIXA_CODE_EXPIRES_AT = new Date(Date.now() - 60_000).toISOString();
@@ -37,7 +37,8 @@ describe('Pixa authorization safeguards', () => {
     const source = await (await import('node:fs/promises')).readFile('app/api/auth/pixa/login/route.ts', 'utf8');
     expect(source).toContain('getSessionUser(request)');
     expect(source).toContain('pixaSubjectId: true');
-    expect(source).toContain('if (user?.pixaSubjectId || user?.measurement)');
+    expect(source).toContain('pixaConnection: { select: { id: true } }');
+    expect(source).toContain('if (user?.pixaConnection && (user.pixaSubjectId || user.measurement))');
     expect(source).toContain('return NextResponse.redirect(new URL(');
   });
 

@@ -1,5 +1,5 @@
 /* ============================
-   API Client — typed fetch helpers with auth token management
+   API Client ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â typed fetch helpers with auth token management
    ============================ */
 
 const API_BASE = '';
@@ -159,6 +159,10 @@ export async function getProductDetail(id: string) {
   return apiFetch<ProductDetail>(`/api/products/${id}`);
 }
 
+export async function getFitRecommendations() {
+  return apiFetch<{ products: (ProductListItem & { fitDistance: number })[] }>('/api/fit/recommendations');
+}
+
 export async function createProduct(body: {
   title: string;
   description: string;
@@ -167,6 +171,7 @@ export async function createProduct(body: {
   categoryPath: string;
   availableSizes: string[];
   stockQuantity: number;
+  fitMeasurements?: Record<string, number>;
 }) {
   return apiFetch<{ product: ProductListItem }>('/api/products', {
     method: 'POST',
