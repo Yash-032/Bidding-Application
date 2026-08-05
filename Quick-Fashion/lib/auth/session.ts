@@ -31,9 +31,10 @@ export function signSessionToken(user: SessionUser): string {
 /** Reads the bearer token from the Authorization header and validates it against the DB. */
 export function getSessionClaims(req: NextRequest): SessionUser | null {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  const token = authHeader.slice('Bearer '.length);
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length)
+    : req.cookies.get('quick_fashion_session')?.value;
+  if (!token) return null;
   try {
     return jwt.verify(token, JWT_SECRET) as SessionUser;
   } catch {

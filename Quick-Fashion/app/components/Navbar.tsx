@@ -22,6 +22,7 @@ export default function Navbar() {
             {user && <Link href="/notifications">Updates</Link>}
             {user ? <button onClick={logout}>Sign out</button> : <Link href="/auth">Sign in</Link>}
             <Link href="/cart" aria-label="Shopping bag">Bag</Link>
+            <a href="/api/auth/pixa/login" aria-label="login">Login with Pixa</a>
           </div>
         </div>
         <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/cart">Bag</Link></div>

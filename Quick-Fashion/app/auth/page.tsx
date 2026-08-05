@@ -125,7 +125,7 @@ function AuthContent() {
             <label className="input-label">Password *</label>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter your password with at least 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field"
@@ -136,7 +136,7 @@ function AuthContent() {
           <button type="submit" disabled={loading} className="w-full btn-primary py-3 font-semibold mt-4">
             {loading ? 'Processing...' : isSignup ? 'Register & Get Started' : 'Sign In'}
           </button>
-        </form>
+        </form><div className="flex items-center gap-3 my-6 text-xs text-[var(--foreground-muted)]"><span className="h-px flex-1 bg-[var(--border)]" />or<span className="h-px flex-1 bg-[var(--border)]" /></div><a href="/api/auth/pixa/login" className="w-full btn-secondary py-3 font-semibold text-center block">Continue with Pixa</a>
 
         <p className="text-xs text-center text-[var(--foreground-muted)] mt-6">
           {isSignup ? (
@@ -162,7 +162,7 @@ function AuthContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="page-container">Preparing sign in…</div>}>
+    <Suspense fallback={<div className="page-container">Preparing sign in</div>}>
       <AuthContent />
     </Suspense>
   );
