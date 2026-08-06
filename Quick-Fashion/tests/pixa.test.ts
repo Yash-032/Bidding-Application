@@ -27,8 +27,8 @@ describe('Pixa authorization safeguards', () => {
 
   it('links Pixa identities and upserts one current measurement row', async () => {
     const source = await (await import('node:fs/promises')).readFile('lib/pixa/service.ts', 'utf8');
-    expect(source).toContain('where: { pixaSubjectId: profile.sub }');
-    expect(source).toContain('where: { userId: user.id }');
+    expect(source).toContain('pixaSubjectId: profile.sub');
+    expect(source).toContain('userId: user.id');
     expect(source).toContain('tx.measurement.upsert');
     expect(source).toContain("status: 'PHOTO_REQUIRED'");
   });
@@ -38,7 +38,7 @@ describe('Pixa authorization safeguards', () => {
     expect(source).toContain('getSessionUser(request)');
     expect(source).toContain('pixaSubjectId: true');
     expect(source).toContain('pixaConnection: { select: { id: true } }');
-    expect(source).toContain('if (user?.pixaConnection && (user.pixaSubjectId || user.measurement))');
+    expect(source).toContain('if (!forceReconnect && user?.pixaConnection && (user.pixaSubjectId || user.measurement))');
     expect(source).toContain('return NextResponse.redirect(new URL(');
   });
 

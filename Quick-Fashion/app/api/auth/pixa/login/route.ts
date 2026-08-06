@@ -4,13 +4,14 @@ import { getSessionUser } from '@/lib/auth/session';
 import { createPixaState, pixaLoginUrl } from '@/lib/pixa/adapter';
 
 export async function GET(request: NextRequest) {
+  const forceReconnect = request.nextUrl.searchParams.get('force') === 'true';
   const session = await getSessionUser(request);
   if (session) {
     const user = await prisma.user.findUnique({
       where: { id: session.id },
       select: { pixaSubjectId: true, measurement: { select: { status: true } }, pixaConnection: { select: { id: true } } },
     });
-    if (user?.pixaConnection && (user.pixaSubjectId || user.measurement)) {
+    if (!forceReconnect && user?.pixaConnection && (user.pixaSubjectId || user.measurement)) {
       const suffix = user.measurement?.status === 'PHOTO_REQUIRED' || !user.measurement ? '?measurements=required' : '';
       return NextResponse.redirect(new URL(`/fit${suffix}`, request.url));
     }
