@@ -1,5 +1,5 @@
 /* ============================
-   API Client ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â typed fetch helpers with auth token management
+   API Client ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â typed fetch helpers with auth token management
    ============================ */
 
 const API_BASE = '';
@@ -153,6 +153,23 @@ export async function listProducts(params?: { search?: string; category?: string
   if (params?.endingSoon) sp.set('endingSoon', 'true');
   if (params?.page) sp.set('page', String(params.page));
   return apiFetch<{ products: ProductListItem[] }>(`/api/products?${sp.toString()}`);
+}
+
+export async function searchProducts(query: string, category?: string) {
+  const params = new URLSearchParams({ q: query });
+  if (category) params.set('category', category);
+  return apiFetch<{ products: ProductListItem[] }>(`/api/search?${params.toString()}`);
+}
+
+export async function getPersonalizedFeed() {
+  // Cache-bust: the feed depends on interactions recorded moments ago,
+  // so every call must reach the server fresh (bypasses in-flight dedup
+  // and browser disk cache).
+  return apiFetch<{ personalized: boolean; products: (ProductListItem & { reason: string | null })[] }>(`/api/feed?_t=${Date.now()}`);
+}
+
+export async function recordProductInteraction(type: 'PRODUCT_VIEW' | 'PRODUCT_DWELL' | 'CART_ADD' | 'AUCTION_WATCH' | 'BID' | 'FEED_IMPRESSION' | 'FEED_CLICK' | 'HIDE', productId: string, durationMs?: number) {
+  return apiFetch<{ recorded: true }>('/api/interactions', { method: 'POST', body: JSON.stringify({ type, productId, durationMs }) });
 }
 
 export async function getProductDetail(id: string) {

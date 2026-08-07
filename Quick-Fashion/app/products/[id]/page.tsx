@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { addToCart, getProductDetail, type ProductDetail } from '@/lib/api';
+import { addToCart, getProductDetail, recordProductInteraction, type ProductDetail } from '@/lib/api';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import ProtectedProductImage from '@/app/components/ProtectedProductImage';
@@ -20,12 +20,68 @@ export default function ProductPage() {
   const [currentImage, setCurrentImage] = useState(0);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
+  const dwellStartRef = useRef<number>(0);
+  const accumulatedDwellRef = useRef<number>(0);
+  const dwellSentRef = useRef(false);
 
   useEffect(() => {
     setCurrentImage(0);
     setDescriptionExpanded(false);
     getProductDetail(id).then(setProduct).catch(() => setProduct(null)).finally(() => setLoading(false));
   }, [id]);
+
+  // ---- Interaction tracking: PRODUCT_VIEW + PRODUCT_DWELL ----
+
+  const sendDwell = useCallback(() => {
+    if (dwellSentRef.current) return;
+    // Accumulate any remaining active time
+    if (dwellStartRef.current > 0) {
+      accumulatedDwellRef.current += Date.now() - dwellStartRef.current;
+      dwellStartRef.current = 0;
+    }
+    const durationMs = Math.min(accumulatedDwellRef.current, 60 * 60 * 1000);
+    if (durationMs >= 1000) { // Only track if they spent at least 1 second
+      dwellSentRef.current = true;
+      recordProductInteraction('PRODUCT_DWELL', id, durationMs).catch(() => undefined);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    // Record PRODUCT_VIEW immediately
+    recordProductInteraction('PRODUCT_VIEW', id).catch(() => undefined);
+
+    // Start dwell timer
+    dwellStartRef.current = Date.now();
+    accumulatedDwellRef.current = 0;
+    dwellSentRef.current = false;
+
+    // Pause/resume dwell tracking on visibility change (tab switch, minimize)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Pause: accumulate time spent so far
+        if (dwellStartRef.current > 0) {
+          accumulatedDwellRef.current += Date.now() - dwellStartRef.current;
+          dwellStartRef.current = 0;
+        }
+      } else {
+        // Resume: restart the timer
+        dwellStartRef.current = Date.now();
+      }
+    };
+
+    // Send dwell on page unload (back button, close tab, navigate away)
+    const handleBeforeUnload = () => sendDwell();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Send dwell on React unmount (SPA navigation)
+      sendDwell();
+    };
+  }, [id, sendDwell]);
 
   if (loading) return <div className="page-container">Loading garment…</div>;
   if (!product) return <div className="shop-empty"><h2>Garment not found</h2><Link href="/shop">Return to shop</Link></div>;

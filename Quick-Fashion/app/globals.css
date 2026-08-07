@@ -130,6 +130,7 @@ h1, h2, h3, .display-font { font-family: var(--font-display), Georgia, serif; }
 .quick-view { position:absolute; left:12px; right:12px; bottom:-50px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(250,249,245,.94); color:#1d231f; text-transform:uppercase; letter-spacing:.14em; font-size:9px; transition:.25s ease; }
 .product-image:hover .quick-view { bottom:12px; }
 .product-info { padding:18px 0 12px; display:flex; justify-content:space-between; gap:12px; }
+.product-recommendation-reason { color:#9a7442; font-size:9px; font-style:italic; letter-spacing:.04em; margin-bottom:4px; }
 .product-kicker { color:#797c78; font-size:9px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:5px; }
 .product-info h3 { font:500 20px var(--font-display); }
 .product-price { font-size:11px; white-space:nowrap; padding-top:16px; }

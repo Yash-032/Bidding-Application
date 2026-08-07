@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSessionClaims } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/errors';
+import { recordInteraction } from '@/lib/discovery/feed.service';
 
 async function getCartForUser(userId: string) {
   const cart = await prisma.cart.findUnique({
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         select: { id: true },
       });
 
+      void recordInteraction(user.id, { type: 'CART_ADD', productId: product.id }).catch(() => undefined);
       return NextResponse.json({ added: true, itemId: cartItem.id }, { status: 201 });
   
   } catch (error) {

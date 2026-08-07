@@ -5,7 +5,7 @@ import { type ProductListItem } from '@/lib/api';
 import CountdownTimer from './CountdownTimer';
 import ProtectedProductImage from './ProtectedProductImage';
 
-export default function AuctionCard({ product }: { product: ProductListItem }) {
+export default function AuctionCard({ product, reason }: { product: ProductListItem; reason?: string | null }) {
   const auction = product.auction;
   const isLive = auction?.status === 'ACTIVE';
 
@@ -18,6 +18,7 @@ export default function AuctionCard({ product }: { product: ProductListItem }) {
       </Link>
       <div className="product-info">
         <div>
+          {reason && reason !== 'New arrival' && <p className="product-recommendation-reason">{reason}</p>}
           <p className="product-kicker">{isLive ? 'Available to buy or bid' : product.categoryNode?.name || 'Quick Fashion collection'}</p>
           <h3><Link href={`/products/${product.id}`}>{product.title}</Link></h3>
         </div>

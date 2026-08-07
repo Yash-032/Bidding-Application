@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSessionUser } from '@/lib/auth/session';
 import { fetchRazorpayPayment, verifyCheckoutSignature } from '@/lib/payments/razorpay';
+import { recordInteraction } from '@/lib/discovery/feed.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       const cart = await tx.cart.findUnique({ where: { userId: order.userId } });
       if (cart) await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
     });
+    for (const item of order.items) void recordInteraction(order.userId, { type: 'PURCHASE', productId: item.productId }).catch(() => undefined);
     return NextResponse.json({ success: true, orderId: order.id });
   } catch (error) {
     console.error('Failed to verify Razorpay payment', error);

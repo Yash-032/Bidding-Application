@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     await refreshMeasurementsFromPixa(user.id);
 
-    const limit = Number(request.nextUrl.searchParams.get('limit') || 30);
+    const limit = Number(request.nextUrl.searchParams.get('limit') || 12);
 
     const products = await fit.recommendationsForUser(user.id, limit);
 

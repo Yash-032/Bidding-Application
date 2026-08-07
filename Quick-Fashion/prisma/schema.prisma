@@ -82,6 +82,19 @@ enum NotificationChannel {
   PUSH
 }
 
+enum InteractionType {
+  SEARCH
+  PRODUCT_VIEW
+  PRODUCT_DWELL
+  CART_ADD
+  AUCTION_WATCH
+  BID
+  PURCHASE
+  FEED_IMPRESSION
+  FEED_CLICK
+  HIDE
+}
+
 enum AuctionEventType {
   BID_PLACED
   OUTBID
@@ -91,14 +104,14 @@ enum AuctionEventType {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  phone        String?  @unique
-  passwordHash String
-  pixaSubjectId String? @unique
-  role         UserRole @default(BUYER)
-  isVerified   Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id            String   @id @default(uuid())
+  email         String   @unique
+  phone         String?  @unique
+  passwordHash  String
+  pixaSubjectId String?  @unique
+  role          UserRole @default(BUYER)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   wallet              Wallet?
   products            Product[]
@@ -111,8 +124,8 @@ model User {
   cart                Cart?
   measurement         Measurement?
   pixaConnection      PixaConnection?
+  userInteractions    UserInteraction[]
 }
-
 
 model PixaConnection {
   id                     String   @id @default(uuid())
@@ -122,13 +135,14 @@ model PixaConnection {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
+
 model Measurement {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pixaUpdatedAt DateTime?
-  status        String   @default("AVAILABLE")
-  unit          String   @default("CM")
+  status        String    @default("AVAILABLE")
+  unit          String    @default("CM")
   shoulderWidth Float?
   chest         Float?
   waist         Float?
@@ -138,8 +152,8 @@ model Measurement {
   armLength     Float?
   thigh         Float?
   calf          Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model UserProfile {
@@ -153,6 +167,25 @@ model UserProfile {
   preferredSizes String[]
   defaultAddress Json?
   updatedAt      DateTime  @updatedAt
+}
+
+model UserInteraction {
+  id         String          @id @default(uuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  type       InteractionType
+  query      String?
+  durationMs Int?
+  createdAt  DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, type, createdAt])
+  @@index([productId, createdAt])
+  @@index([categoryId, createdAt])
 }
 
 model Cart {
@@ -217,40 +250,40 @@ model PaymentTransaction {
   reconciledAt     DateTime?
 }
 
-  model Product {
-    id             String    @id @default(uuid())
-    sellerId       String
-    seller         User      @relation(fields: [sellerId], references: [id])
-    title          String
-    description    String
-    // Legacy-only source URLs. New application code never reads or writes this
-    // column; `protectedImages` is the sole product-image source of truth.
-    images         String[]
-    priceInRupees  BigInt
-    category       String    @default("OTHER")
-    categoryId     String?
-    categoryNode   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-    availableSizes String[]
-    stockQuantity  Int       @default(0)
-    isActive       Boolean   @default(true)
-    createdAt      DateTime  @default(now())
+model Product {
+  id             String    @id @default(uuid())
+  sellerId       String
+  seller         User      @relation(fields: [sellerId], references: [id])
+  title          String
+  description    String
+  // Legacy-only source URLs. New application code never reads or writes this
+  // column; `protectedImages` is the sole product-image source of truth.
+  images         String[]
+  priceInRupees  BigInt
+  category       String    @default("OTHER")
+  categoryId     String?
+  categoryNode   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  availableSizes String[]
+  stockQuantity  Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
 
-    auction         Auction?
-    storeOrders     StoreOrder[]
-    cartItems       CartItem[]
-    storeOrderItems StoreOrderItem[]
-    protectedImages ProductImage[]
-    fitProfile     ProductFitProfile?
+  auction         Auction?
+  storeOrders     StoreOrder[]
+  cartItems       CartItem[]
+  storeOrderItems StoreOrderItem[]
+  protectedImages ProductImage[]
+  fitProfile      ProductFitProfile?
+  interactions    UserInteraction[]
 
-    @@index([categoryId])
-  }
-
+  @@index([categoryId])
+}
 
 model ProductFitProfile {
-  id            String   @id @default(uuid())
-  productId     String   @unique
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  unit          String   @default("CM")
+  id            String                    @id @default(uuid())
+  productId     String                    @unique
+  product       Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unit          String                    @default("CM")
   shoulderWidth Float?
   chest         Float
   waist         Float
@@ -262,40 +295,41 @@ model ProductFitProfile {
   calf          Float
   // Managed by PostgreSQL/pgvector in the migration; Prisma reads the scalar measurements.
   fitVector     Unsupported("vector(9)")?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
 }
 
 model ProductImage {
-  id            String   @id @default(uuid())
-  productId     String?
-  product       Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  uploaderId    String
-  sortOrder     Int      @default(0)
-  width         Int
-  height        Int
-  originalKey   String   @unique
-  variants      Json
-  status        String   @default("STAGED")
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid())
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploaderId  String
+  sortOrder   Int      @default(0)
+  width       Int
+  height      Int
+  originalKey String   @unique
+  variants    Json
+  status      String   @default("STAGED")
+  createdAt   DateTime @default(now())
 
   @@index([productId, sortOrder])
   @@index([uploaderId, status])
 }
 
 model Category {
-  id        String     @id @default(uuid())
-  name      String
-  slug      String
-  path      String     @unique
-  parentId  String?
-  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Category[] @relation("CategoryTree")
-  products  Product[]
-  sortOrder Int        @default(0)
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id           String            @id @default(uuid())
+  name         String
+  slug         String
+  path         String            @unique
+  parentId     String?
+  parent       Category?         @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     Category[]        @relation("CategoryTree")
+  products     Product[]
+  interactions UserInteraction[]
+  sortOrder    Int               @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@unique([parentId, slug])
   @@index([parentId, isActive, sortOrder])

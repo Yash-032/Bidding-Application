@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listProducts, type ProductListItem } from '@/lib/api';
+import { getPersonalizedFeed, type ProductListItem } from '@/lib/api';
 import AuctionCard from './components/AuctionCard';
 
 const collections = [
@@ -27,19 +27,33 @@ export default function Home() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    listProducts()
+  const fetchFeed = useCallback(() => {
+    setLoading(true);
+    getPersonalizedFeed()
       .then((result) => setProducts(result.products))
       .catch((error) => console.error('Failed to load featured garments', error))
       .finally(() => setLoading(false));
   }, []);
+
+  // Fetch on mount
+  useEffect(() => { fetchFeed(); }, [fetchFeed]);
+
+  // Re-fetch when the user navigates back to this tab / SPA-navigates back.
+  // This ensures the feed reflects interactions recorded on product pages.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) fetchFeed();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchFeed]);
 
   return (
     <div>
       <section className="luxury-hero">
         <div className="luxury-hero-shade" />
         <div className="luxury-hero-content">
-          <p className="eyebrow text-white/90">New Season · 2026</p>
+          <p className="eyebrow text-white/90">New Season Â· 2026</p>
           <h1>The Art of<br />Summer Dressing</h1>
           <p>Natural textures, considered tailoring, and pieces made to endure.</p>
           <div className="hero-actions">
@@ -71,8 +85,8 @@ export default function Home() {
 
       <section id="new-arrivals" className="auction-feature">
         <div className="section-heading">
-          <p className="eyebrow">Shop the latest edit</p>
-          <h2>New arrivals</h2>
+          <p className="eyebrow">Picked for you</p>
+          <h2>Discover your next garment</h2>
           <p className="section-copy">Discover garments selected for quality and enduring style. Purchase any piece directly; selected items may also be offered in an administrator-run auction.</p>
         </div>
 
@@ -82,7 +96,7 @@ export default function Home() {
           </div>
         ) : products.length ? (
           <div className="product-grid">
-            {products.slice(0, 4).map((product) => <AuctionCard key={product.id} product={product} />)}
+            {products.slice(0, 4).map((product) => <AuctionCard key={product.id} product={product} reason={(product as ProductListItem & { reason?: string | null }).reason} />)}
           </div>
         ) : (
           <div className="empty-editorial">
@@ -97,7 +111,7 @@ export default function Home() {
       </section>
 
       <section className="service-strip">
-        <div><strong>Complimentary delivery</strong><span>On orders above ₹10,000</span></div>
+        <div><strong>Complimentary delivery</strong><span>On orders above â‚¹10,000</span></div>
         <div><strong>Secure payments</strong><span>Encrypted, gateway-protected checkout</span></div>
         <div><strong>Client services</strong><span>Personal assistance, seven days a week</span></div>
       </section>
@@ -109,7 +123,7 @@ export default function Home() {
         </div>
         <div><h4>Shop</h4><Link href="/shop">New arrivals</Link><Link href="/categories">All categories</Link><Link href="/shop?category=bottoms">Bottoms</Link></div>
         <div><h4>Services</h4><Link href="/auctions">Private auctions</Link><Link href="/wallet">Payments</Link><Link href="/notifications">Order updates</Link></div>
-        <div><h4>Private list</h4><p>Stories, private previews, and auction releases.</p><form className="footer-form" onSubmit={(e) => e.preventDefault()}><input type="email" aria-label="Email address" placeholder="Email address" /><button aria-label="Join private list">→</button></form></div>
+        <div><h4>Private list</h4><p>Stories, private previews, and auction releases.</p><form className="footer-form" onSubmit={(e) => e.preventDefault()}><input type="email" aria-label="Email address" placeholder="Email address" /><button aria-label="Join private list">â†’</button></form></div>
       </footer>
     </div>
   );
