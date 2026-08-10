@@ -78,7 +78,6 @@ function ShopContent() {
         <div className="category-pills" aria-label="Product categories">
           <button className={!category ? 'active' : ''} onClick={() => chooseCategory('')}>Shop all</button>
           {categories.map((item) => <button key={item.id} className={category === item.path ? 'active' : ''} onClick={() => chooseCategory(item.path)}>{item.name}</button>)}
-          <Link className="browse-categories-link" href="/categories">Browse sub-categories</Link>
         </div>
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search garments" aria-label="Search garments" />
       </div>

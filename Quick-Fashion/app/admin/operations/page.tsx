@@ -31,7 +31,7 @@ function flattenCategories(categories: CategoryTreeNode[], depth = 0): CategoryO
 
 export default function AdminOperationsPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -62,17 +62,18 @@ export default function AdminOperationsPage() {
   const [creatingProduct, setCreatingProduct] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
-      router.push('/auth');
+      router.replace('/auth');
       return;
     }
     if (user.role !== 'ADMIN') {
       toast('Access denied. Admin portal requires administrative privileges.', 'error');
-      router.push('/');
+      router.replace('/');
       return;
     }
     setLoading(false);
-  }, [user, router]);
+  }, [authLoading, user, router, toast]);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') return;

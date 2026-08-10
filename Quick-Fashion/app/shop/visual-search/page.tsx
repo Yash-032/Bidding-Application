@@ -88,10 +88,9 @@ export default function VisualSearchPage() {
     <div className="vs-page">
       {/* ── Hero header ────────────────────────────────────────── */}
       <header className="vs-hero">
-        <p className="eyebrow">AI-Powered Discovery</p>
         <h1>Visual Search</h1>
         <p className="vs-hero-copy">
-          Upload a photo of any garment and we&apos;ll identify it using AI vision analysis and find the most similar pieces in our collection.
+          Upload a photo of any garment and we&apos;ll find the most similar pieces in our collection.
         </p>
       </header>
 

@@ -18,7 +18,7 @@ function flattenCategories(categories: CategoryTreeNode[], depth = 0): CategoryO
 
 export default function SellPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState({ title: '', description: '', price: '', categoryPath: '', stock: '1', shoulderWidth: '', chest: '', waist: '', hip: '', neck: '', sleeveLength: '', armLength: '', thigh: '', calf: '' });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -27,9 +27,13 @@ export default function SellPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) router.push('/auth');
-    else if (user.role === 'BUYER') router.push('/');
-  }, [user, router]);
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/auth');
+    } else if (user.role === 'BUYER') {
+      router.replace('/');
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     getCategories().then((result) => setCategories(result.categories)).catch(() => {
@@ -62,12 +66,12 @@ export default function SellPage() {
         <div><label className="input-label">Description</label><textarea className="input-field" required value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
         <div><label className="input-label">Protected product images</label><input className="input-field" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple required onChange={(event) => setImageFiles(Array.from(event.target.files ?? []))} /><small>Files are kept private and tiled automatically.</small></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div><label className="input-label">Retail price (â‚¹)</label><input className="input-field" type="number" min="1" required value={form.price} onChange={(e) => set('price', e.target.value)} /></div>
-          <div><label className="input-label">Category</label><select className="input-field" required value={form.categoryPath} onChange={(e) => set('categoryPath', e.target.value)}><option value="">Select a category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${'â€” '.repeat(category.depth)}${category.name}`}</option>)}</select></div>
+          <div><label className="input-label">Retail price</label><input className="input-field" type="number" min="1" required value={form.price} onChange={(e) => set('price', e.target.value)} /></div>
+          <div><label className="input-label">Category</label><select className="input-field" required value={form.categoryPath} onChange={(e) => set('categoryPath', e.target.value)}><option value="">Select a category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${''.repeat(category.depth)}${category.name}`}</option>)}</select></div>
           <div><label className="input-label">Stock quantity</label><input className="input-field" type="number" min="0" required value={form.stock} onChange={(e) => set('stock', e.target.value)} /></div>
         </div>
-        <fieldset className="space-y-3"><legend className="input-label">Garment measurements (cm)</legend><p className="text-sm text-[var(--foreground-muted)]">Enter the finished garment measurements. They are used only for fit matching.</p><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{fitFields.map((field) => <label key={field} className="input-label capitalize">{field.replace(/([A-Z])/g, " $1")}<input className="input-field mt-1" type="number" min="0.1" step="0.1" required value={form[field]} onChange={(event) => set(field, event.target.value)} /></label>)}</div></fieldset>`n        <div><label className="input-label">Available sizes</label><div className="size-options">{sizes.map((size) => <button type="button" key={size} className={selectedSizes.includes(size) ? 'active' : ''} onClick={() => setSelectedSizes((current) => current.includes(size) ? current.filter((item) => item !== size) : [...current, size])}>{size}</button>)}</div></div>
-        <button className="btn-primary" disabled={loading}>{loading ? 'Publishingâ€¦' : 'Publish to shop'}</button>
+        <fieldset className="space-y-3"><legend className="input-label">Garment measurements (cm)</legend><p className="text-sm text-[var(--foreground-muted)]">Enter the finished garment measurements. They are used only for fit matching.</p><div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{fitFields.map((field) => <label key={field} className="input-label capitalize">{field.replace(/([A-Z])/g, " $1")}<input className="input-field mt-1" type="number" min="0.1" step="0.1" required value={form[field]} onChange={(event) => set(field, event.target.value)} /></label>)}</div></fieldset> <div><label className="input-label">Available sizes</label><div className="size-options">{sizes.map((size) => <button type="button" key={size} className={selectedSizes.includes(size) ? 'active' : ''} onClick={() => setSelectedSizes((current) => current.includes(size) ? current.filter((item) => item !== size) : [...current, size])}>{size}</button>)}</div></div>
+        <button className="btn-primary" disabled={loading}>{loading ? 'Publishing…' : 'Publish to shop'}</button>
       </form>
     </div>
   );

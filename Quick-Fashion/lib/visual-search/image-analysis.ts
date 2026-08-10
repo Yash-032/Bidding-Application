@@ -252,7 +252,7 @@ Important rules:
 /** Candidate Gemini models to try in order when encountering 429 rate limits or 404 model name mismatches */
 const CANDIDATE_GEMINI_MODELS = [
   'gemini-3.6-flash',
-  
+  'gemini-2.5-flash'
 ];
 
 async function classifyWithGemini(
