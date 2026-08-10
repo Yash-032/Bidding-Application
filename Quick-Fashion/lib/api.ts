@@ -376,3 +376,48 @@ export async function triggerActivation() {
 export async function triggerSettlement() {
   return apiFetch<{ settledCount: number; results: unknown[] }>('/api/auctions/settle', { method: 'POST' });
 }
+
+/* ============================================================
+   Visual Search
+   ============================================================ */
+export interface VisualSearchResult extends ProductListItem {
+  featureVector: number[];
+  similarityScore: number;
+}
+
+export interface VisualSearchResponse {
+  results: VisualSearchResult[];
+  totalScanned: number;
+  detectedCategory?: 'shirt' | 't-shirt' | 'dress' | 'jacket' | 'bottoms' | null;
+  categoryFallbackUsed?: boolean;
+  queryVector: number[];
+  analysisDetails?: {
+    geminiLabels?: Record<string, string> | null;
+    brightness?: number;
+    colourVariance?: number;
+  } | null;
+}
+
+/** Legacy: search by pre-computed feature vector */
+export async function visualSearch(features: number[], category?: string) {
+  return apiFetch<VisualSearchResponse>('/api/visual-search', {
+    method: 'POST',
+    body: JSON.stringify({ features, category: category || undefined }),
+  });
+}
+
+/** New: search by uploading an image (server-side Gemini + sharp analysis) */
+export async function visualSearchByImage(imageDataUrl: string, category?: string) {
+  // Extract mime type from data URL
+  const mimeMatch = imageDataUrl.match(/^data:(image\/\w+);/);
+  const mimeType = mimeMatch?.[1] ?? 'image/jpeg';
+
+  return apiFetch<VisualSearchResponse>('/api/visual-search', {
+    method: 'POST',
+    body: JSON.stringify({
+      image: imageDataUrl,
+      mimeType,
+      category: category || undefined,
+    }),
+  });
+}

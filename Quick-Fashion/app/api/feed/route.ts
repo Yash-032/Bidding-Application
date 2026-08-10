@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getSessionUser } from '@/lib/auth/session';
-import {
-  personalizedFeed,
-  serializeFeedProduct,
-} from '@/lib/discovery/feed.service';
+import { personalizedFeed, serializeFeedProduct } from '@/lib/discovery/feed.service';
 import { toErrorResponse } from '@/lib/utils/errors';
 
 export async function GET(request: NextRequest) {

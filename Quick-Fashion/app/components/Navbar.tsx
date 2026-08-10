@@ -13,7 +13,7 @@ export default function Navbar() {
       <nav className="main-nav">
         <div className="nav-inner">
           <div className="nav-left">
-            <Link href="/categories">Categories</Link><Link href="/shop">Shop all</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/auctions">Live Bids</Link>
+            <Link href="/categories">Categories</Link><Link href="/shop">Shop all</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/auctions">Live Bids</Link><Link href="/shop/visual-search" className="vs-nav-link">Visual Search</Link>
           </div>
           <Link href="/" className="brand-wordmark" aria-label="The Reserve home">Quick Fashion</Link>
           <div className="nav-right">
@@ -25,7 +25,7 @@ export default function Navbar() {
             <a href="/api/auth/pixa/login" aria-label="login">Get Started with Pixa</a>
           </div>
         </div>
-        <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/cart">Bag</Link></div>
+        <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/shop/visual-search">📷 Search</Link><Link href="/cart">Bag</Link></div>
       </nav>
       {pathname === '/' && <div className="category-bar"><Link href="/shop">New arrivals</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/shop?category=t-shirt">T-Shirts</Link><Link href="/shop?category=bottoms">Bottoms</Link><Link href="/shop?category=jackets">Jackets</Link><Link href="/categories">All categories</Link></div>}
     </>

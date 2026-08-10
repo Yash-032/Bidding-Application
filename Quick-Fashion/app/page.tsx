@@ -38,16 +38,6 @@ export default function Home() {
   // Fetch on mount
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
-  // Re-fetch when the user navigates back to this tab / SPA-navigates back.
-  // This ensures the feed reflects interactions recorded on product pages.
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) fetchFeed();
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchFeed]);
-
   return (
     <div>
       <section className="luxury-hero">

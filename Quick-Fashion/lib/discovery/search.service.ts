@@ -1,10 +1,14 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import {
+  inferSearchIntent,
+  rootOfCategoryPath,
+  type SearchIntent,
+} from '@/lib/discovery/search-intent';
 
 /**
- * Abbreviation synonyms — only for genuine short-forms / alternate names,
- * NOT for typos.  Typos are handled dynamically by pg_trgm word_similarity
- * and Levenshtein distance.
+ * Alternate names only. Typos are resolved dynamically against live category
+ * names and product text by PostgreSQL pg_trgm.
  */
 const synonyms: Record<string, string> = {
   tshirt: 't shirt',
@@ -30,7 +34,7 @@ const productInclude = {
   },
 };
 
-export type DiscoveryProduct = Prisma.ProductGetPayload<{ include: typeof productInclude; }>;
+export type DiscoveryProduct = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
 
 export function normalizeSearchQuery(query: string): string {
   return query
@@ -44,159 +48,163 @@ export function normalizeSearchQuery(query: string): string {
     .slice(0, 120);
 }
 
+type CategoryCorrection = { path: string; name: string; score: number };
+
+async function resolveSearchIntent(normalizedQuery: string): Promise<SearchIntent | null> {
+  const semanticIntent = inferSearchIntent(normalizedQuery);
+  if (semanticIntent) return semanticIntent;
+
+  // Generalized typo recovery against the live taxonomy. This runs only when
+  // the ontology found no valid term, so "shorts" is never corrected to "shirts".
+  const matches = await prisma.$queryRaw<CategoryCorrection[]>(Prisma.sql`
+    SELECT c."path", c."name",
+      GREATEST(
+        word_similarity(${normalizedQuery}, lower(c."name")),
+        word_similarity(${normalizedQuery}, replace(lower(c."path"), '-', ' '))
+      )::float AS score
+    FROM "Category" c
+    WHERE c."isActive" = true
+      AND GREATEST(
+        word_similarity(${normalizedQuery}, lower(c."name")),
+        word_similarity(${normalizedQuery}, replace(lower(c."path"), '-', ' '))
+      ) >= 0.30
+    ORDER BY score DESC, length(c."path") ASC
+    LIMIT 1
+  `);
+
+  const corrected = matches[0];
+  if (!corrected) return null;
+
+  return {
+    key: `category:${corrected.path}`,
+    label: corrected.name,
+    preferredPaths: [corrected.path],
+    compatibleRoots: [rootOfCategoryPath(corrected.path)],
+  };
+}
+
+function categoryPathCondition(paths: string[]) {
+  if (paths.length === 0) return Prisma.sql`false`;
+
+  return Prisma.sql`(${Prisma.join(
+    paths.map(
+      (path) =>
+        Prisma.sql`(c."path" = ${path} OR c."path" LIKE ${`${path}/%`})`
+    ),
+    ' OR '
+  )})`;
+}
+
 /**
- * Multi-strategy fuzzy search:
- *
- * 1. **ILIKE** — catches exact substring matches (fast, indexed via trigram GIN)
- * 2. **word_similarity()** — compares the query against individual words inside
- *    titles/descriptions.  "jackt" matches "jacket" even in "Men's Denim Jacket"
- *    because it measures the best-matching substring, not the full-string similarity.
- *    Threshold is lowered to 0.15 (from default 0.3) to tolerate 1-2 char typos.
- * 3. **levenshtein()** — for very short queries (≤6 chars), trigram similarity
- *    degrades because there are few trigrams.  Levenshtein edit distance of ≤2
- *    catches single/double char mistakes like "dres" → "dress", "jackt" → "jacket".
- * 4. **Full-text search** — catches stemming/pluralization ("jackets" → "jacket",
- *    "dresses" → "dress") via PostgreSQL `to_tsvector` / `plainto_tsquery`.
- *
- * Results are ranked by a composite score: exact match > ILIKE > word_similarity >
- * full-text rank > Levenshtein > freshness.
+ * Hybrid catalog search:
+ * 1. infer garment meaning and compatible category branches;
+ * 2. retrieve lexical, full-text, typo, and semantic candidates together;
+ * 3. rank compatible garments before lexically similar incompatible garments.
  */
-export async function fuzzySearchProducts(query: string, categoryPath?: string, limit = 30) {
+export async function fuzzySearchProducts(
+  query: string,
+  categoryPath?: string,
+  limit = 30
+) {
   const normalizedQuery = normalizeSearchQuery(query);
+  const safeLimit = Math.min(
+    Math.max(Number.isFinite(limit) ? Math.floor(limit) : 30, 1),
+    100
+  );
 
   if (!normalizedQuery) {
     return prisma.product.findMany({
       where: {
         isActive: true,
-        stockQuantity: {
-          gt: 0,
-        },
+        stockQuantity: { gt: 0 },
+        ...(categoryPath
+          ? {
+              categoryNode: {
+                OR: [
+                  { path: categoryPath },
+                  { path: { startsWith: `${categoryPath}/` } },
+                ],
+              },
+            }
+          : {}),
       },
       include: productInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
     });
   }
 
   const wildcardQuery = `%${normalizedQuery.replace(/%|_/g, '')}%`;
+  const intent = await resolveSearchIntent(normalizedQuery);
+  const semanticWildcardQuery = `%${(intent?.label ?? normalizedQuery).toLowerCase().replace(/%|_/g, '')}%`;
+  const preferredCategory = categoryPathCondition(intent?.preferredPaths ?? []);
+  const compatibleCategory = categoryPathCondition(intent?.compatibleRoots ?? []);
+  const requestedCategory = categoryPath
+    ? Prisma.sql`(c."path" = ${categoryPath} OR c."path" LIKE ${`${categoryPath}/%`})`
+    : Prisma.sql`true`;
 
-  // Lower the similarity threshold for this session so the % operator and
-  // word_similarity() accept looser matches (default is 0.3, too strict for
-  // short-word typos).
-  await prisma.$executeRawUnsafe(
-    `SET pg_trgm.similarity_threshold = 0.15`
-  );
-
-  // Split query into individual words for per-word Levenshtein matching.
-  const queryWords = normalizedQuery.split(' ').filter((w) => w.length > 0);
-
-  // Build Levenshtein conditions dynamically: for each query word with length ≤ 6,
-  // check if ANY word in the title (split by spaces) is within edit distance 2.
-  // For longer words, word_similarity() handles it well.
-  const shortWords = queryWords.filter((w) => w.length <= 6 && w.length >= 2);
-
-  // We use a CTE approach: first find candidate IDs with scoring, then hydrate.
-  const candidateIds = await prisma.$queryRaw<{ id: string }[]>(
-    Prisma.sql`
-      SELECT p.id
-      FROM "Product" p
-      WHERE
-        p."isActive" = true
-        AND p."stockQuantity" > 0
-        AND (
-          -- Strategy 1: ILIKE substring match
-          p."title" ILIKE ${wildcardQuery}
-          OR p."description" ILIKE ${wildcardQuery}
-
-          -- Strategy 2: Trigram word_similarity (tolerates typos in individual words)
-          OR word_similarity(${normalizedQuery}, p."title") > 0.15
-          OR word_similarity(${normalizedQuery}, p."description") > 0.15
-
-          -- Strategy 3: Full-text search (handles stemming & plurals)
-          OR to_tsvector('english', p."title" || ' ' || p."description")
-             @@ plainto_tsquery('english', ${normalizedQuery})
-
-          -- Strategy 4: Levenshtein for short words (edit distance ≤ 2)
-          -- Applied via word_similarity at low threshold which covers this, but
-          -- we also do a direct levenshtein on title words for very short queries.
-          ${shortWords.length > 0
-            ? Prisma.sql`OR EXISTS (
-                SELECT 1
-                FROM unnest(string_to_array(lower(p."title"), ' ')) AS tw(word)
-                WHERE ${Prisma.join(
-                  shortWords.map(
-                    (w) => Prisma.sql`levenshtein(tw.word, ${w}) <= 2`
-                  ),
-                  ' OR '
-                )}
-              )`
-            : Prisma.sql``
-          }
-        )
-      ORDER BY
-        -- Scoring: exact match first, then ILIKE, then similarity, then freshness
-        CASE
-          WHEN lower(p."title") = ${normalizedQuery} THEN 100
-          WHEN p."title" ILIKE ${wildcardQuery} THEN 80
-          WHEN word_similarity(${normalizedQuery}, p."title") > 0.5 THEN 60
-          WHEN to_tsvector('english', p."title" || ' ' || p."description")
-               @@ plainto_tsquery('english', ${normalizedQuery}) THEN 40
-          WHEN word_similarity(${normalizedQuery}, p."title") > 0.15 THEN 30
-          ELSE 10
-        END DESC,
-        GREATEST(
-          word_similarity(${normalizedQuery}, p."title"),
-          word_similarity(${normalizedQuery}, p."description")
-        ) DESC,
-        p."createdAt" DESC
-      LIMIT ${Math.min(Math.max(limit * 3, 30), 150)}
-    `
-  );
+  const candidateIds = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT p.id
+    FROM "Product" p
+    LEFT JOIN "Category" c ON c.id = p."categoryId"
+    WHERE p."isActive" = true
+      AND p."stockQuantity" > 0
+      AND ${requestedCategory}
+      AND (
+        p."title" ILIKE ${wildcardQuery}
+        OR p."title" ILIKE ${semanticWildcardQuery}
+        OR p."description" ILIKE ${wildcardQuery}
+        OR c."name" ILIKE ${wildcardQuery}
+        OR c."path" ILIKE ${wildcardQuery}
+        OR word_similarity(${normalizedQuery}, lower(p."title")) >= 0.24
+        OR word_similarity(${normalizedQuery}, lower(p."description")) >= 0.24
+        OR to_tsvector('english', p."title" || ' ' || p."description")
+           @@ plainto_tsquery('english', ${normalizedQuery})
+        OR ${compatibleCategory}
+      )
+    ORDER BY
+      CASE
+        WHEN ${preferredCategory} THEN 3
+        WHEN ${compatibleCategory} THEN 2
+        ELSE 0
+      END DESC,
+      (
+        CASE WHEN lower(p."title") = ${normalizedQuery} THEN 120 ELSE 0 END
+        + CASE WHEN p."title" ILIKE ${semanticWildcardQuery} THEN 95 ELSE 0 END
+        + CASE WHEN p."title" ILIKE ${wildcardQuery} THEN 80 ELSE 0 END
+        + CASE WHEN p."description" ILIKE ${wildcardQuery} THEN 35 ELSE 0 END
+        + CASE WHEN c."name" ILIKE ${wildcardQuery} OR c."path" ILIKE ${wildcardQuery} THEN 55 ELSE 0 END
+        + CASE WHEN to_tsvector('english', p."title" || ' ' || p."description")
+                    @@ plainto_tsquery('english', ${normalizedQuery}) THEN 45 ELSE 0 END
+        + GREATEST(
+            word_similarity(${normalizedQuery}, lower(p."title")),
+            word_similarity(${normalizedQuery}, lower(p."description")),
+            word_similarity(${normalizedQuery}, lower(COALESCE(c."name", '')))
+          ) * 40
+      ) DESC,
+      p."createdAt" DESC
+    LIMIT ${Math.min(Math.max(safeLimit * 3, 30), 150)}
+  `);
 
   const products = await prisma.product.findMany({
     where: {
-      id: {
-        in: candidateIds.map((item) => item.id),
-      },
+      id: { in: candidateIds.map((item) => item.id) },
     },
     include: productInclude,
   });
 
-  if (!categoryPath) {
-    const productMap = new Map(
-      products.map((product) => [product.id, product])
-    );
-
-    return candidateIds
-      .map((item) => productMap.get(item.id))
-      .filter(Boolean)
-      .slice(0, limit) as DiscoveryProduct[];
-  }
-
-  const filteredProducts = products.filter(
-    (product) =>
-      product.categoryNode?.path === categoryPath ||
-      product.categoryNode?.path.startsWith(`${categoryPath}/`)
-  );
-
-  const productMap = new Map(
-    filteredProducts.map((product) => [product.id, product])
-  );
+  const productMap = new Map(products.map((product) => [product.id, product]));
 
   return candidateIds
     .map((item) => productMap.get(item.id))
     .filter(Boolean)
-    .slice(0, limit) as DiscoveryProduct[];
+    .slice(0, safeLimit) as DiscoveryProduct[];
 }
 
 export function serializeDiscoveryProduct(
   product: DiscoveryProduct & { reason?: string }
 ) {
   const { images: _legacyImages, ...safeProduct } = product;
-
-  // Legacy images are intentionally omitted.
   void _legacyImages;
 
   return {

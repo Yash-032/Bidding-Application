@@ -1050,3 +1050,521 @@ textarea.input-field {
     grid-template-columns: 1fr;
   }
 }
+
+.vs-nav-link {
+  position: relative;
+}
+.vs-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: var(--accent-black);
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+}
+.vs-nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* ── Page layout ───────────────────────────────────────────── */
+.vs-page {
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+.vs-hero {
+  text-align: center;
+  padding: 72px 24px 52px;
+  background: linear-gradient(180deg, #f1eee6 0%, var(--background) 100%);
+}
+.vs-hero h1 {
+  font-size: clamp(42px, 5vw, 72px);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+  font-weight: 400;
+}
+.vs-hero-copy {
+  max-width: 540px;
+  margin: 0 auto;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--foreground-muted);
+}
+
+.vs-container {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ── Upload section ────────────────────────────────────────── */
+.vs-upload-section {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  margin-bottom: 48px;
+  transition: all 0.4s ease;
+}
+.vs-upload-compact {
+  flex-direction: row;
+}
+
+.vs-drop-zone {
+  flex: 0 0 380px;
+  min-height: 380px;
+  border: 2px dashed var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.vs-drop-zone:hover {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 4px var(--primary-glow);
+}
+.vs-dragging {
+  border-color: var(--accent-emerald) !important;
+  background: var(--accent-emerald-bg) !important;
+  box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.15) !important;
+  transform: scale(1.01);
+}
+.vs-dragging .vs-upload-prompt h3 {
+  color: #059669;
+}
+
+.vs-has-image {
+  border-style: solid;
+  border-color: var(--border);
+}
+.vs-has-image:hover {
+  border-color: var(--primary);
+}
+
+.vs-upload-compact .vs-drop-zone {
+  flex: 0 0 260px;
+  min-height: 260px;
+}
+
+.vs-file-input {
+  display: none;
+}
+
+/* ── Upload prompt ─────────────────────────────────────────── */
+.vs-upload-prompt {
+  text-align: center;
+  padding: 40px 24px;
+}
+.vs-upload-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  color: var(--foreground-muted);
+  animation: vs-float 3s ease-in-out infinite;
+}
+@keyframes vs-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.vs-upload-prompt h3 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 8px;
+  transition: color 0.2s;
+}
+.vs-upload-prompt p {
+  font-size: 13px;
+  color: var(--foreground-subtle);
+}
+
+/* ── Image preview ─────────────────────────────────────────── */
+.vs-preview-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.vs-preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.vs-colour-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  padding: 6px 14px;
+  border: 2px solid rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.vs-colour-badge span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* ── Controls ──────────────────────────────────────────────── */
+.vs-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.vs-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+}
+.vs-category-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vs-pill {
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.vs-pill:hover {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+.vs-pill.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.vs-reset-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--foreground-muted);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 8px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+.vs-reset-btn:hover {
+  color: var(--foreground);
+}
+
+/* ── Analysing spinner ─────────────────────────────────────── */
+.vs-analysing {
+  text-align: center;
+  padding: 72px 24px;
+}
+.vs-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  animation: vs-spin 0.8s linear infinite;
+}
+@keyframes vs-spin {
+  to { transform: rotate(360deg); }
+}
+.vs-analysing h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  margin-bottom: 8px;
+}
+.vs-analysing p {
+  font-size: 13px;
+  color: var(--foreground-muted);
+}
+
+/* ── Error state ───────────────────────────────────────────── */
+.vs-error {
+  text-align: center;
+  padding: 60px 24px;
+}
+.vs-error h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  margin-bottom: 8px;
+  color: #e11d48;
+}
+.vs-error p {
+  font-size: 14px;
+  color: var(--foreground-muted);
+  margin-bottom: 20px;
+}
+
+/* ── AI Analysis Details ──────────────────────────────────────── */
+.vs-analysis-details {
+  margin-bottom: 28px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-emerald);
+}
+.vs-analysis-details h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 400;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vs-analysis-details h3::before {
+  content: '✦';
+  color: var(--accent-emerald);
+  font-size: 14px;
+}
+.vs-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.vs-label-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.vs-label-item:hover {
+  border-color: var(--primary);
+}
+.vs-label-key {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--foreground-subtle);
+}
+.vs-label-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--foreground);
+  text-transform: capitalize;
+}
+
+/* ── Feature vector visualisation ──────────────────────────── */
+.vs-vector-section {
+  margin-bottom: 48px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.vs-vector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.vs-vector-header h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 400;
+}
+.vs-vector-binary {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--primary);
+  background: var(--primary-glow);
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+}
+.vs-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+.vs-feature-bit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition: all 0.2s;
+}
+.vs-feature-bit.active {
+  background: var(--accent-emerald-bg);
+  border-color: var(--accent-emerald);
+}
+.vs-bit-label {
+  color: var(--foreground-muted);
+  text-transform: capitalize;
+}
+.vs-feature-bit.active .vs-bit-label {
+  color: #059669;
+  font-weight: 600;
+}
+.vs-bit-value {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 13px;
+}
+.vs-feature-bit.active .vs-bit-value {
+  color: #059669;
+}
+
+/* ── Results section ───────────────────────────────────────── */
+.vs-results-section {
+  margin-top: 8px;
+}
+.vs-results-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.vs-results-header h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+}
+.vs-results-meta {
+  font-size: 12px;
+  color: var(--foreground-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vs-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 28px;
+}
+
+/* ── Result card with similarity badge ─────────────────────── */
+.vs-result-card {
+  position: relative;
+}
+.vs-similarity-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: rgba(36, 57, 46, 0.92);
+  color: white;
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.vs-sim-score {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.vs-sim-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.vs-product-vector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-top: 4px;
+}
+.vs-pv-label {
+  font-size: 10px;
+  color: var(--foreground-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.vs-pv-bits {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--foreground-muted);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+
+/* ── No results ────────────────────────────────────────────── */
+.vs-no-results {
+  text-align: center;
+  padding: 72px 24px;
+}
+.vs-no-results h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  margin-bottom: 8px;
+}
+.vs-no-results p {
+  font-size: 14px;
+  color: var(--foreground-muted);
+  margin-bottom: 24px;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .vs-upload-section {
+    flex-direction: column;
+  }
+  .vs-drop-zone,
+  .vs-upload-compact .vs-drop-zone {
+    flex: none;
+    width: 100%;
+    min-height: 260px;
+  }
+  .vs-results-grid {
+    grid-template-columns: 1fr;
+  }
+  .vs-results-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .vs-vector-header {
+    flex-direction: column;
+  }
+  .vs-feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .vs-hero {
+    padding: 52px 20px 36px;
+  }
+}

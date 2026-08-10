@@ -50,15 +50,12 @@ export default function ProductPage() {
     // Record PRODUCT_VIEW immediately
     recordProductInteraction('PRODUCT_VIEW', id).catch(() => undefined);
 
-    // Start dwell timer
     dwellStartRef.current = Date.now();
     accumulatedDwellRef.current = 0;
     dwellSentRef.current = false;
 
-    // Pause/resume dwell tracking on visibility change (tab switch, minimize)
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Pause: accumulate time spent so far
         if (dwellStartRef.current > 0) {
           accumulatedDwellRef.current += Date.now() - dwellStartRef.current;
           dwellStartRef.current = 0;
@@ -69,7 +66,6 @@ export default function ProductPage() {
       }
     };
 
-    // Send dwell on page unload (back button, close tab, navigate away)
     const handleBeforeUnload = () => sendDwell();
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -77,7 +73,7 @@ export default function ProductPage() {
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleBeforeUnload)
       // Send dwell on React unmount (SPA navigation)
       sendDwell();
     };
