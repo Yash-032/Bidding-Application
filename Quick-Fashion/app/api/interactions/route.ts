@@ -8,6 +8,7 @@ import { ValidationError, toErrorResponse } from '@/lib/utils/errors';
 const allowedInteractionTypes = new Set<InteractionType>([
   'PRODUCT_VIEW',
   'PRODUCT_DWELL',
+  'SITE_DWELL',
   'CART_ADD',
   'AUCTION_WATCH',
   'BID',
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       throw new ValidationError('Unsupported interaction type');
     }
 
-    if (!productId && !categoryId) {
+    if (type !== 'SITE_DWELL' && !productId && !categoryId) {
       throw new ValidationError(
         'Either a productId or categoryId must be provided.'
       );

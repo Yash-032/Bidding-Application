@@ -711,4 +711,249 @@ export class AnalyticsService {
       auctions,
     });
   }
+
+  async getCustomerInsights( userId: string, startDate: Date, endDate: Date ) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: true,
+        measurement: {
+          select: {
+            status: true,
+            pixaUpdatedAt: true,
+          },
+        },
+        pixaConnection: {
+          select: {
+            id: true,
+          },
+        },
+        cart: {
+          include: {
+            items: true,
+          },
+        },
+      },
+    });
+
+    if (!user || user.role === 'ADMIN') return null;
+
+    const interactions = await prisma.userInteraction.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            title: true,
+            category: true,
+          },
+        },
+        category: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 500,
+    });
+
+    const orders = await prisma.storeOrder.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        items: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 50,
+    });
+
+    const counts = new Map<string, number>();
+    const searches = new Map<string, number>();
+    const categories = new Map<string, number>();
+    const categoryDwellMs = new Map<string, number>();
+
+    let dwellMs = 0;
+    let siteDwellMs = 0;
+
+    for (const item of interactions) {
+      counts.set(
+        item.type,
+        (counts.get(item.type) ?? 0) + 1
+      );
+
+      if (item.type === 'PRODUCT_DWELL') { dwellMs += item.durationMs ?? 0; }
+      if (item.type === 'SITE_DWELL') { siteDwellMs += item.durationMs ?? 0; }
+
+      if (item.type === 'SEARCH' && item.query) {
+        searches.set(
+          item.query,
+          (searches.get(item.query) ?? 0) + 1
+        );
+      }
+
+      const category =
+        item.category?.name ?? item.product?.category;
+
+      if (category) {
+        categories.set(category, (categories.get(category) ?? 0) + 1);
+        if (item.type === 'PRODUCT_DWELL') {
+          categoryDwellMs.set(category, (categoryDwellMs.get(category) ?? 0) + (item.durationMs ?? 0));
+        }
+      }
+    }
+
+    const paid = orders.filter(
+      (x) =>
+        x.status === 'PAID' ||
+        x.status === 'FULFILLED'
+    );
+
+    const totalSpent = paid.reduce(
+      (sum, x) => sum + Number(x.totalPaise) / 100,
+      0
+    );
+
+    const productViews =
+      counts.get('PRODUCT_VIEW') ?? 0;
+
+    const cartAdds =
+      counts.get('CART_ADD') ?? 0;
+
+    const purchases =
+      counts.get('PURCHASE') ?? paid.length;
+
+    const lastActive =
+      interactions[0]?.createdAt ?? user.createdAt;
+
+    const daysInactive = Math.max(
+      0,
+      Math.floor(
+        (Date.now() - lastActive.getTime()) / 86400000
+      )
+    );
+
+    return this.serialize({
+      customer: {
+        id: user.id,
+        email: user.email,
+        fullName: user.profile?.fullName ?? null,
+        joinedAt: user.createdAt,
+
+        fit: {
+          status:
+            user.measurement?.status ?? 'NOT_CONNECTED',
+          connectedToPixa: Boolean(user.pixaConnection),
+          lastSyncedAt:
+            user.measurement?.pixaUpdatedAt ?? null,
+        },
+      },
+
+      summary: {
+        segment:
+          totalSpent >= 10000
+            ? 'High value'
+            : purchases
+              ? 'Active buyer'
+              : daysInactive > 30
+                ? 'At risk'
+                : 'New / browsing',
+
+        lastActive,
+        daysInactive,
+        totalSpent,
+        orderCount: paid.length,
+        activeMinutes: Math.round(Math.floor((siteDwellMs + dwellMs) / 1000) / 60),
+        productDwellMinutes: Math.round(Math.floor(dwellMs / 1000) / 60),
+        interactionCount: interactions.length,
+        cartItems: user.cart?.items.length ?? 0,
+      },
+
+      funnel: {
+        productViews,
+        cartAdds,
+        purchases,
+
+        viewToCartRate: productViews
+          ? (cartAdds / productViews) * 100
+          : 0,
+
+        cartToPurchaseRate: cartAdds
+          ? (purchases / cartAdds) * 100
+          : 0,
+      },
+
+      engagement: {
+        searches: counts.get('SEARCH') ?? 0,
+        productViews,
+        feedClicks: counts.get('FEED_CLICK') ?? 0,
+        feedImpressions:
+          counts.get('FEED_IMPRESSION') ?? 0,
+      },
+
+      topSearches: Array.from(
+        searches,
+        ([query, count]) => ({
+          query,
+          count,
+        })
+      )
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
+
+      categoryInterests: Array.from(
+        categories,
+        ([name, count]) => ({
+          name,
+          count,
+          activeMinutes: Math.round((categoryDwellMs.get(name) ?? 0) / 60000),
+        })
+      )
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
+
+      recentActivity: interactions
+        .slice(0, 20)
+        .map((x) => ({
+          type: x.type,
+          at: x.createdAt,
+          productTitle: x.product?.title ?? null,
+          category:
+            x.category?.name ??
+            x.product?.category ??
+            null,
+          query: x.query ?? null,
+          durationMs: x.durationMs ?? null,
+        })),
+
+      recentOrders: orders
+        .slice(0, 10)
+        .map((x) => ({
+          id: x.id,
+          status: x.status,
+          amount: Number(x.totalPaise) / 100,
+          at: x.createdAt,
+          products: x.items
+            .map(
+              (i) =>
+                `${i.productTitle} x${i.quantity}`
+            )
+            .join(', '),
+        })),
+    });
+  }
 }

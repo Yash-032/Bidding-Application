@@ -12,7 +12,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   LogOut, 
-  User
+  User,
+  Users
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { name: 'Analytics Dashboard', href: '/admin', icon: BarChart3 },
     { name: 'Operations Portal', href: '/admin/operations', icon: Settings },
+    { name: 'Customer Insights', href: '/admin/customers', icon: Users },
   ];
 
   return (
