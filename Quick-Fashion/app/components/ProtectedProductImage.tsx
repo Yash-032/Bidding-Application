@@ -79,6 +79,9 @@ function renderPlaceholder(placeholder: HTMLElement, state: 'loading' | 'error',
   `;
 }
 
+type CachedCanvas = { width: number; height: number; canvas: HTMLCanvasElement };
+const decodedCanvasCache = new Map<string, CachedCanvas>();
+
 export default function ProtectedProductImage({
   image,
   alt,
@@ -206,6 +209,22 @@ export default function ProtectedProductImage({
     const load = async () => {
       const current = image;
       if (!active || !hasEnteredViewport || !current) return;
+
+      // Fast-path: Check if this image has already been decoded and rendered
+      const cached = decodedCanvasCache.get(current.id);
+      if (cached) {
+        canvas.width = cached.width;
+        canvas.height = cached.height;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (ctx) {
+          ctx.drawImage(cached.canvas, 0, 0);
+          frame.classList.add('ready');
+          placeholder.innerHTML = '';
+          renderedWidth = cached.width;
+          return;
+        }
+      }
+
       controller?.abort();
       controller = new AbortController();
       const { signal } = controller;
@@ -276,6 +295,16 @@ export default function ProtectedProductImage({
           renderedWidth = manifest.width;
           frame.classList.add('ready');
           placeholder.innerHTML = '';
+
+          try {
+            const offscreen = document.createElement('canvas');
+            offscreen.width = manifest.width;
+            offscreen.height = manifest.height;
+            offscreen.getContext('2d')?.drawImage(canvas, 0, 0);
+            decodedCanvasCache.set(current.id, { width: manifest.width, height: manifest.height, canvas: offscreen });
+          } catch {
+            // cache save fallback ignore
+          }
           return;
         } catch (error) {
           if (signal.aborted) return;

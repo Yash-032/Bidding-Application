@@ -5,18 +5,28 @@ import { Pool } from "pg";
 const globalForDatabase = globalThis as unknown as {
   prisma?: PrismaClient;
   pgPool?: Pool;
+  pgPoolErrorHandlerAttached?: boolean;
 };
 
 const pool =
   globalForDatabase.pgPool ??
   new Pool({
     connectionString: process.env.DATABASE_URL,
-    max: 5,
-    min: 1,
-    connectionTimeoutMillis: 10_000,
-    idleTimeoutMillis: 300_000,
+    max: 10,
+    min: 0,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: 10_000,
     keepAlive: true,
   });
+
+// Next.js can re-evaluate this module repeatedly in development while retaining
+// the global pool. Attach the listener once so HMR does not leak listeners.
+if (!globalForDatabase.pgPoolErrorHandlerAttached) {
+  pool.on("error", (err) => {
+    console.warn("[pg-pool] Idle connection error (auto-recovering):", err.message);
+  });
+  globalForDatabase.pgPoolErrorHandlerAttached = true;
+}
 
 export const prisma =
   globalForDatabase.prisma ??

@@ -9,7 +9,7 @@ export default function Navbar() {
   const pathname = usePathname();
   return (
     <>
-      <div className="announcement-bar">Complimentary delivery on orders above ₹10,000 · Secure direct checkout</div>
+      <div className="announcement-bar">Complimentary delivery on orders above &#8377;10,000 &middot; Secure direct checkout</div>
       <nav className="main-nav">
         <div className="nav-inner">
           <div className="nav-left">
@@ -25,9 +25,8 @@ export default function Navbar() {
             <a href="/api/auth/pixa/login" aria-label="login">Get Started with Pixa</a>
           </div>
         </div>
-        <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/shop/visual-search">📷 Search</Link><Link href="/cart">Bag</Link></div>
+        <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/shop/visual-search">&#128247; Search</Link><Link href="/cart">Bag</Link></div>
       </nav>
-      {pathname === '/' && <div className="category-bar"><Link href="/shop">New arrivals</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/shop?category=t-shirt">T-Shirts</Link><Link href="/shop?category=bottoms">Bottoms</Link><Link href="/shop?category=jackets">Jackets</Link><Link href="/categories">All categories</Link></div>}
     </>
   );
 }

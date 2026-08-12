@@ -15,6 +15,7 @@ const interactionWeights: Record<InteractionType, number> = {
   SEARCH: 3,
   PRODUCT_VIEW: 2,
   PRODUCT_DWELL: 4,
+  SITE_DWELL: 0,
   CART_ADD: 8,
   AUCTION_WATCH: 8,
   BID: 12,

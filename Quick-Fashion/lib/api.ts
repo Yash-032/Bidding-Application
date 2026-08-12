@@ -30,10 +30,25 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-    const data = await res.json();
-    if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong', res.status);
-    return data as T;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers,
+        signal: init?.signal || controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong', res.status);
+      return data as T;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new ApiError('Request timed out while connecting to database', 504);
+      }
+      throw err;
+    }
   };
 
   if (method !== 'GET') return execute();

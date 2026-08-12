@@ -29,7 +29,7 @@ describe('Pixa authorization safeguards', () => {
     const source = await (await import('node:fs/promises')).readFile('lib/pixa/service.ts', 'utf8');
     expect(source).toContain('pixaSubjectId: profile.sub');
     expect(source).toContain('userId: user.id');
-    expect(source).toContain('tx.measurement.upsert');
+    expect(source).toContain('prisma.measurement.upsert');
     expect(source).toContain("status: 'PHOTO_REQUIRED'");
   });
 

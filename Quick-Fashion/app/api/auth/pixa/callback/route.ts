@@ -27,12 +27,6 @@ export async function GET(request: NextRequest) {
       throw new Error('Pixa profile is incomplete');
     }
 
-    if (!result.refreshToken) {
-      throw new Error(
-        'Pixa did not return a refresh token'
-      );
-    }
-
     const { user, measurement } =
       await linkPixaAccount(
         result.profile,
