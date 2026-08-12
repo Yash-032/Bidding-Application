@@ -13,6 +13,10 @@ type CategoryCard = {
 };
 
 const hiddenDesignLabCategories = new Set(['core essentials', 'summer drop']);
+const categoryArtworkPaths = new Set([
+  'shirt', 't-shirt', 'tops', 'bottoms', 'dress', 'sweater',
+  'sweatshirt', 'hoodie', 'crop-tops', 'shrug', 'jackets', 'denim-jackets',
+]);
 
 export default function DesignLabHomePage() {
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
@@ -98,7 +102,16 @@ export default function DesignLabHomePage() {
             >
               <div className="dl-category-visual">
                 <span className="dl-card-number">0{page * pageSize + cardIndex + 1}</span>
-                {product?.protectedImages?.[0] ? (
+                {categoryArtworkPaths.has(category.path) ? (
+                  <DesignLabCanvasImage
+                    manifestUrl={`/api/design-lab/category-image/${encodeURIComponent(category.path)}`}
+                    cacheKey={`category:remove-bg-v4:${category.path}`}
+                    aspectRatio="1 / 1"
+                    pixelRatioCap={3}
+                    alt={`${category.name} category`}
+                    className="dl-canvas-contain"
+                  />
+                ) : product?.protectedImages?.[0] ? (
                   <DesignLabCanvasImage
                     image={product.protectedImages[0]}
                     alt={product.title}

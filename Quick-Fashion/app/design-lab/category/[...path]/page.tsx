@@ -8,6 +8,21 @@ import DesignLabCanvasImage from '@/app/design-lab/DesignLabCanvasImage';
 import type { ProductListItem } from '@/lib/api';
 import { loadDesignLabProducts } from '../../lib';
 
+function garmentTitleLines(title: string) {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 3) return [words.join(' ')];
+
+  const lines: string[] = [];
+  const firstLineSize = words.length === 4 ? 2 : 3;
+  lines.push(words.splice(0, firstLineSize).join(' '));
+
+  while (words.length) {
+    lines.push(words.splice(0, 3).join(' '));
+  }
+
+  return lines;
+}
+
 export default function DesignLabCategoryPage() {
   const params = useParams<{ path: string[] }>();
   const categoryPath = useMemo(() => (params.path ?? []).join('/'), [params.path]);
@@ -57,7 +72,7 @@ export default function DesignLabCategoryPage() {
   };
 
   const mountedProducts = products.filter((item) => item.id === product?.id || visitedIds.has(item.id));
-  const nextProducts = products.filter((_, itemIndex) => itemIndex !== index).slice(index, index + 2);
+  const nextProduct = products.length > 1 ? products[(index + 1) % products.length] : null;
 
   if (loading) {
     return <main className="dl-shell dl-loading"><span /><p>Preparing {categoryName}</p></main>;
@@ -89,7 +104,11 @@ export default function DesignLabCategoryPage() {
       >
         <article className="dl-product-info" key={product.id}>
           <p className="dl-kicker">{categoryName}</p>
-          <h1>{product.title}</h1>
+          <h1 aria-label={product.title}>
+            {garmentTitleLines(product.title).map((line, lineIndex) => (
+              <span key={`${line}-${lineIndex}`}>{line}</span>
+            ))}
+          </h1>
           <p className="dl-product-description">{product.description}</p>
           <div className="dl-size-row">
             <span>Size</span>
@@ -128,24 +147,19 @@ export default function DesignLabCategoryPage() {
           </div>
         </div>
 
-        <aside className="dl-product-next">
-          <p>Up next</p>
-          <div className="dl-next-list">
-            {nextProducts.map((item) => (
-              <button type="button" key={item.id} onClick={() => {
-                setDirection('next');
-                setIndex(products.findIndex((candidate) => candidate.id === item.id));
-              }}>
+        {nextProduct && (
+          <aside className="dl-product-next" aria-label={`Next garment: ${nextProduct.title}`}>
+            <div className="dl-next-list">
+              <button type="button" onClick={() => move(1)} aria-label={`Show ${nextProduct.title}`}>
                 <DesignLabCanvasImage
-                  image={item.protectedImages[0]}
-                  alt={item.title}
+                  image={nextProduct.protectedImages[0]}
+                  alt=""
                   className="dl-canvas-contain"
                 />
-                <span>{item.title}</span>
               </button>
-            ))}
-          </div>
-        </aside>
+            </div>
+          </aside>
+        )}
 
         <button className="dl-product-arrow previous" type="button" onClick={() => move(-1)} aria-label="Previous garment">
           <ArrowLeft size={22} />

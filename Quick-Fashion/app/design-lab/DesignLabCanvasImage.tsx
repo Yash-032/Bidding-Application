@@ -37,21 +37,27 @@ async function sha256Hex(value: ArrayBuffer) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function buildProcessedCanvas(imageId: string, requestedWidth: number) {
-  const cached = processedCanvasCache.get(imageId);
+async function buildProcessedCanvas(
+  sourceKey: string,
+  requestedWidth: number,
+  manifestUrl?: string,
+) {
+  const cached = processedCanvasCache.get(sourceKey);
   if (cached) return cached;
-  const running = processingPromises.get(imageId);
+  const running = processingPromises.get(sourceKey);
   if (running) return running;
 
   const operation = (async () => {
-    let response = await fetch(`/api/design-lab/remove-bg/${encodeURIComponent(imageId)}?w=${requestedWidth}`, {
+    let response = await fetch(manifestUrl
+      ? `${manifestUrl}?w=${requestedWidth}`
+      : `/api/design-lab/remove-bg/${encodeURIComponent(sourceKey)}?w=${requestedWidth}`, {
       credentials: 'same-origin',
       cache: 'no-store',
     });
     const backgroundRemoved = response.ok;
-    if (!response.ok) {
+    if (!response.ok && !manifestUrl) {
       console.warn('[design-lab-remove-bg] Falling back to the original protected image');
-      response = await fetch(`/api/protected-images/${encodeURIComponent(imageId)}/manifest?w=${requestedWidth}`, {
+      response = await fetch(`/api/protected-images/${encodeURIComponent(sourceKey)}/manifest?w=${requestedWidth}`, {
         credentials: 'same-origin',
         cache: 'no-store',
       });
@@ -88,11 +94,11 @@ async function buildProcessedCanvas(imageId: string, requestedWidth: number) {
     });
     // A temporary remove.bg/API failure may display the protected original, but
     // it must never poison the cutout cache for the rest of the browser session.
-    if (backgroundRemoved) processedCanvasCache.set(imageId, canvas);
+    if (backgroundRemoved) processedCanvasCache.set(sourceKey, canvas);
     return canvas;
-  })().finally(() => processingPromises.delete(imageId));
+  })().finally(() => processingPromises.delete(sourceKey));
 
-  processingPromises.set(imageId, operation);
+  processingPromises.set(sourceKey, operation);
   return operation;
 }
 
@@ -100,10 +106,18 @@ export default function DesignLabCanvasImage({
   image,
   alt,
   className = '',
+  manifestUrl,
+  cacheKey,
+  aspectRatio,
+  pixelRatioCap = 2,
 }: {
   image?: ProtectedImageRef | null;
   alt: string;
   className?: string;
+  manifestUrl?: string;
+  cacheKey?: string;
+  aspectRatio?: string;
+  pixelRatioCap?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<ShadowRoot | null>(null);
@@ -135,9 +149,12 @@ export default function DesignLabCanvasImage({
     shadow.append(style, frame);
 
     let active = true;
-    if (image) {
-      const width = Math.max(320, Math.ceil(host.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 2)));
-      void buildProcessedCanvas(image.id, width)
+    const sourceKey = cacheKey ?? image?.id;
+    if (sourceKey) {
+      const width = Math.max(320, Math.ceil(
+        host.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, pixelRatioCap),
+      ));
+      void buildProcessedCanvas(sourceKey, width, manifestUrl)
         .then((processed) => {
           if (!active) return;
           canvas.width = processed.width;
@@ -157,7 +174,7 @@ export default function DesignLabCanvasImage({
       host.removeEventListener('dragstart', block);
       shadow.replaceChildren();
     };
-  }, [image]);
+  }, [image, manifestUrl, cacheKey, pixelRatioCap]);
 
   return (
     <div
@@ -165,7 +182,7 @@ export default function DesignLabCanvasImage({
       className={`protected-product-image dl-canvas-product-image ${className}`}
       role="img"
       aria-label={alt}
-      style={{ aspectRatio: image ? `${image.width} / ${image.height}` : undefined }}
+      style={{ aspectRatio: aspectRatio ?? (image ? `${image.width} / ${image.height}` : undefined) }}
     />
   );
 }

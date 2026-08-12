@@ -244,7 +244,7 @@
   min-height: min(720px, calc(100vh - 190px));
   margin: auto;
   display: grid;
-  grid-template-columns: minmax(230px, .7fr) minmax(430px, 1.65fr) minmax(180px, .55fr);
+  grid-template-columns: minmax(320px, .85fr) minmax(430px, 1.55fr) minmax(150px, .42fr);
   overflow: hidden;
   background:
     radial-gradient(circle at 51% 44%, rgba(255,255,255,.98), rgba(249,250,247,.82) 37%, transparent 65%),
@@ -255,6 +255,7 @@
 .dl-product-info {
   position: relative;
   z-index: 5;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -263,9 +264,16 @@
 }
 
 .dl-product-info h1 {
+  width: 100%;
+  max-width: 100%;
   margin: 0 0 18px;
-  font: 600 clamp(35px, 3.4vw, 56px)/1.02 var(--font-display);
+  font: 600 clamp(32px, 2.65vw, 48px)/1.02 var(--font-display);
   letter-spacing: -.04em;
+}
+
+.dl-product-info h1 span {
+  display: block;
+  max-width: 100%;
 }
 
 .dl-product-description {
@@ -311,7 +319,7 @@
 .dl-price-row a { color: var(--dl-ink); font: 700 9px/1 var(--font-inter); letter-spacing: .1em; text-decoration: underline; text-transform: uppercase; }
 .dl-price-row strong { font: 600 19px/1 var(--font-display); }
 
-.dl-main-garment { position: relative; min-height: 650px; display: grid; place-items: center; }
+.dl-main-garment { position: relative; z-index: 2; min-width: 0; min-height: 650px; display: grid; place-items: center; }
 .dl-main-garment::before { content: ''; position: absolute; width: min(72%, 560px); aspect-ratio: 1; border: 1px solid rgba(18,63,48,.09); border-radius: 50%; }
 .dl-garment-shadow { position: absolute; bottom: 8%; width: 48%; height: 6%; border-radius: 50%; background: rgba(31,48,39,.18); filter: blur(22px); }
 .dl-garment-stack { position: absolute; inset: 5%; display: grid; place-items: center; perspective: 1200px; }
@@ -340,14 +348,31 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 30px 28px 30px 0;
+  overflow: hidden;
+  padding: 30px 0;
 }
 
-.dl-product-next > p { color: #7f8782; font: 700 9px/1 var(--font-inter); letter-spacing: .15em; text-transform: uppercase; }
-.dl-next-list { display: grid; gap: 14px; margin-top: 15px; }
-.dl-next-list button { display: grid; gap: 8px; padding: 9px; border: 1px solid var(--dl-line); background: rgba(255,255,255,.58); cursor: pointer; text-align: left; }
-.dl-next-list .protected-product-image { width: 100%; max-height: 150px; }
-.dl-next-list span { overflow: hidden; color: #59635e; font: 600 9px/1.2 var(--font-inter); text-overflow: ellipsis; white-space: nowrap; }
+.dl-next-list { width: 100%; }
+.dl-next-list button {
+  display: grid;
+  width: 118%;
+  height: clamp(220px, 38vh, 360px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: .28;
+  transform: translateX(16%);
+  filter: saturate(.72);
+  transition: opacity .28s ease, transform .35s ease, filter .28s ease;
+}
+.dl-next-list button:hover,
+.dl-next-list button:focus-visible {
+  opacity: .62;
+  transform: translateX(9%);
+  filter: saturate(1);
+}
+.dl-next-list .protected-product-image { width: 100%; height: 100%; max-height: none; }
 
 .dl-product-arrow { top: 50%; transform: translateY(-50%); }
 .dl-product-arrow.previous { left: 12px; }
@@ -588,4 +613,27 @@
   .dl-product-page .dl-product-arrow {
     opacity: .62;
   }
+}
+
+/* Larger remove.bg category cutouts fill the artwork area without clipping. */
+.dl-category-visual .dl-canvas-product-image {
+  width: min(90%, 500px);
+  max-height: 94%;
+  transform: scale(1.08);
+  transform-origin: center;
+  filter:
+    drop-shadow(0 10px 7px rgba(21, 38, 30, .14))
+    drop-shadow(0 28px 22px rgba(21, 38, 30, .19));
+  will-change: transform, filter;
+}
+
+.dl-category-card:hover .dl-category-visual .dl-canvas-product-image {
+  transform: translateY(-7px) scale(1.12) rotate(-.5deg);
+  filter:
+    drop-shadow(0 13px 8px rgba(21, 38, 30, .15))
+    drop-shadow(0 36px 28px rgba(21, 38, 30, .24));
+}
+
+@media (max-width: 700px) {
+  .dl-category-visual .dl-canvas-product-image { width: 94%; transform: scale(1.04); }
 }
