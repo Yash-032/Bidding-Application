@@ -15,7 +15,23 @@ export default function Navbar() {
           <div className="nav-left">
             <Link href="/categories">Categories</Link><Link href="/shop">Shop all</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/auctions">Live Bids</Link><Link href="/shop/visual-search" className="vs-nav-link">Visual Search</Link>
           </div>
-          <Link href="/" className="brand-wordmark" aria-label="The Reserve home">Quick Fashion</Link>
+          <Link
+            href="/"
+            className="brand-wordmark brand-texture-reveal"
+            aria-label="Quick Fashion home"
+            onPointerMove={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              event.currentTarget.style.setProperty('--brand-reveal-x', `${event.clientX - bounds.left}px`);
+              event.currentTarget.style.setProperty('--brand-reveal-y', `${event.clientY - bounds.top}px`);
+            }}
+            onPointerLeave={(event) => {
+              event.currentTarget.style.setProperty('--brand-reveal-x', '50%');
+              event.currentTarget.style.setProperty('--brand-reveal-y', '50%');
+            }}
+          >
+            <span className="brand-texture-base">Quick Fashion</span>
+            <span className="brand-texture-hindi" aria-hidden="true"><span>क्विक फैशन</span></span>
+          </Link>
           <div className="nav-right">
             {user?.role === 'ADMIN' && <Link href="/admin">Admin</Link>}
             {user && <Link href="/profile">Profile</Link>}
