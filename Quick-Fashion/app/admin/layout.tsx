@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading || !authorized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+      <div className="admin-shell flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#24392e] border-t-transparent"></div>
           <p className="text-sm font-medium text-[var(--foreground-muted)]">Verifying administrator privileges...</p>
@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)] w-full">
+    <div className="admin-shell flex h-screen overflow-hidden bg-[var(--background)] w-full">
       {/* Sidebar for Desktop */}
       <aside className={`hidden md:flex h-screen sticky top-0 flex-col overflow-hidden border-r border-[var(--border)] bg-[#24392e] text-[#efebe3] transition-all duration-300 ease-in-out z-20 shrink-0 ${ collapsed ? 'w-20' : 'w-64' }`} >
         <div className="flex h-20 items-center justify-between px-6 border-b border-[#314c3e]">

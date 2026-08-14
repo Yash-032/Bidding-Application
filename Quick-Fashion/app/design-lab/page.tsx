@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, MoveRight } from 'lucide-react';
 import DesignLabCanvasImage from '@/app/design-lab/DesignLabCanvasImage';
 import type { CategoryTreeNode, ProductListItem } from '@/lib/api';
+import { categoryArtworkVersions } from '@/lib/design-lab/category-artwork-versions';
 import { loadDesignLabCatalog, productBelongsToPath } from './lib';
 
 type CategoryCard = {
@@ -17,6 +19,45 @@ const categoryArtworkPaths = new Set([
   'shirt', 't-shirt', 'tops', 'bottoms', 'dress', 'sweater',
   'sweatshirt', 'hoodie', 'crop-tops', 'shrug', 'jackets', 'denim-jackets',
 ]);
+
+function CategoryArtwork({ category, product, lens = false }: CategoryCard & { lens?: boolean }) {
+  const baseClassName = lens ? 'dl-canvas-contain dl-category-lens-image' : 'dl-canvas-contain';
+  const artwork = categoryArtworkVersions[category.path as keyof typeof categoryArtworkVersions];
+  const artworkShapeClass = artwork && artwork.height > artwork.width
+    ? 'dl-category-artwork-portrait'
+    : '';
+  const className = `${baseClassName} ${artworkShapeClass}`.trim();
+
+  if (categoryArtworkPaths.has(category.path)) {
+    return (
+      <DesignLabCanvasImage
+        manifestUrl={`/api/design-lab/category-image/${encodeURIComponent(category.path)}`}
+        cacheKey={`category:artwork:${category.path}:${artwork?.version ?? 'unknown'}`}
+        aspectRatio={artwork ? `${artwork.width} / ${artwork.height}` : '1 / 1'}
+        pixelRatioCap={lens ? 3 : 3}
+        alt={lens ? '' : `${category.name} category`}
+        className={className}
+        style={{
+          '--dl-artwork-scale': artwork?.displayScale ?? 1.08,
+          '--dl-artwork-hover-scale': artwork?.hoverScale ?? 1.12,
+        } as CSSProperties}
+      />
+    );
+  }
+
+  if (product?.protectedImages?.[0]) {
+    return (
+      <DesignLabCanvasImage
+        image={product.protectedImages[0]}
+        pixelRatioCap={lens ? 3 : 2}
+        alt={lens ? '' : product.title}
+        className={className}
+      />
+    );
+  }
+
+  return lens ? null : <div className="dl-empty-garment">Coming soon</div>;
+}
 
 export default function DesignLabHomePage() {
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
@@ -100,25 +141,23 @@ export default function DesignLabHomePage() {
               key={category.id}
               style={{ '--card-index': cardIndex } as React.CSSProperties}
             >
-              <div className="dl-category-visual">
+              <div
+                className="dl-category-visual"
+                onPointerMove={(event) => {
+                  if (event.pointerType === 'touch') return;
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  event.currentTarget.style.setProperty('--lens-x', `${event.clientX - bounds.left}px`);
+                  event.currentTarget.style.setProperty('--lens-y', `${event.clientY - bounds.top}px`);
+                }}
+                onPointerLeave={(event) => {
+                  event.currentTarget.style.removeProperty('--lens-x');
+                  event.currentTarget.style.removeProperty('--lens-y');
+                }}
+              >
                 <span className="dl-card-number">0{page * pageSize + cardIndex + 1}</span>
-                {categoryArtworkPaths.has(category.path) ? (
-                  <DesignLabCanvasImage
-                    manifestUrl={`/api/design-lab/category-image/${encodeURIComponent(category.path)}`}
-                    cacheKey={`category:remove-bg-v4:${category.path}`}
-                    aspectRatio="1 / 1"
-                    pixelRatioCap={3}
-                    alt={`${category.name} category`}
-                    className="dl-canvas-contain"
-                  />
-                ) : product?.protectedImages?.[0] ? (
-                  <DesignLabCanvasImage
-                    image={product.protectedImages[0]}
-                    alt={product.title}
-                    className="dl-canvas-contain"
-                  />
-                ) : (
-                  <div className="dl-empty-garment">Coming soon</div>
+                <CategoryArtwork category={category} product={product} />
+                {(categoryArtworkPaths.has(category.path) || product?.protectedImages?.[0]) && (
+                  <span className="dl-category-art-cursor" aria-hidden="true" />
                 )}
               </div>
               <div className="dl-category-label">

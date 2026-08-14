@@ -73,26 +73,59 @@ export class CatalogService {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
     const categoryPath = params.categoryPath ? normalizeCategoryPath(params.categoryPath) : '';
-    return prisma.product.findMany({
-      where: {
-        isActive: true,
-        ...(params.search ? {
-          OR: [
-            { title: { contains: params.search, mode: 'insensitive' as const } },
-            { description: { contains: params.search, mode: 'insensitive' as const } },
-          ],
-        } : {}),
-        ...(categoryPath ? {
-          categoryNode: {
-            is: {
-              OR: [
-                { path: categoryPath },
-                { path: { startsWith: `${categoryPath}/` } },
-              ],
+    const productFilters = {
+      isActive: true,
+      ...(params.search ? {
+        OR: [
+          { title: { contains: params.search, mode: 'insensitive' as const } },
+          { description: { contains: params.search, mode: 'insensitive' as const } },
+        ],
+      } : {}),
+      ...(categoryPath ? {
+        categoryNode: {
+          is: {
+            OR: [
+              { path: categoryPath },
+              { path: { startsWith: `${categoryPath}/` } },
+            ],
+          },
+        },
+      } : {}),
+    };
+
+    // Auction browsing starts from Auction, whose status/end-time index is selective.
+    // Starting at Product made the database scan the catalog before checking its one-to-one auction relation.
+    if (params.auctionsOnly) {
+      const auctions = await prisma.auction.findMany({
+        where: {
+          status: { in: ['SCHEDULED', 'ACTIVE'] },
+          product: { is: productFilters },
+        },
+        include: {
+          product: {
+            include: {
+              categoryNode: true,
+              protectedImages: {
+                orderBy: { sortOrder: 'asc' },
+                select: { id: true, width: true, height: true },
+              },
             },
           },
-        } : {}),
-        ...(params.auctionsOnly ? { auction: { is: { status: { in: ['SCHEDULED', 'ACTIVE'] } } } } : {}),
+        },
+        orderBy: params.endingSoon ? { endTime: 'asc' } : { startTime: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+
+      return auctions.map(({ product, ...auction }) => ({
+        ...product,
+        auction,
+      }));
+    }
+
+    return prisma.product.findMany({
+      where: {
+        ...productFilters,
       },
       include: {
         auction: true,
@@ -104,7 +137,6 @@ export class CatalogService {
       take: pageSize,
     });
   }
-
   async getProductDetail(productId: string) {
     const product = await prisma.product.findUnique({
       where: { id: productId },

@@ -6,6 +6,7 @@ const globalForDatabase = globalThis as unknown as {
   prisma?: PrismaClient;
   pgPool?: Pool;
   pgPoolErrorHandlerAttached?: boolean;
+  pgPoolWarmup?: Promise<void>;
 };
 
 const pool =
@@ -13,9 +14,9 @@ const pool =
   new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 10,
-    min: 0,
+    min: 1,
     connectionTimeoutMillis: 15_000,
-    idleTimeoutMillis: 10_000,
+    idleTimeoutMillis: 300_000,
     keepAlive: true,
   });
 
@@ -40,3 +41,19 @@ export const prisma =
 
 globalForDatabase.pgPool = pool;
 globalForDatabase.prisma = prisma;
+
+/** Keep one pooled connection available so page navigation does not repeatedly pay a cold database-connect cost. */
+export function warmDatabaseConnection() {
+  if (!globalForDatabase.pgPoolWarmup) {
+    globalForDatabase.pgPoolWarmup = pool
+      .query('SELECT 1')
+      .then(() => undefined)
+      .catch((error) => {
+        console.warn('[pg-pool] Initial database warm-up failed:', error.message);
+      });
+  }
+
+  return globalForDatabase.pgPoolWarmup;
+}
+// This module is only imported by Node.js server routes; begin warming the pool as soon as one loads.
+void warmDatabaseConnection();

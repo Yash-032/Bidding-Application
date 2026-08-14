@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { addToCart, getCategories, listProducts, type CategoryTreeNode, type ProductListItem } from '@/lib/api';
 import ProtectedProductImage from './components/ProtectedProductImage';
+import HomePreloader from './components/HomeIntroFilmstrip';
 import { Search, ChevronLeft, ChevronRight, Heart, ShoppingBag, X, Sparkles, Filter, Grid, ArrowRight, PackageOpen } from 'lucide-react';
 
 interface CuratedItem {
@@ -196,6 +197,7 @@ export default function Home() {
 
   return (
     <div>
+      <HomePreloader pageReady={!loading} />
       {/* 2-Column Editorial Garment Showcase Hero (Spacious & Large) */}
       <section className="showcase-wrapper">
         

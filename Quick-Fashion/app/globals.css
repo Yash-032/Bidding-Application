@@ -115,8 +115,8 @@ h1, h2, h3, .display-font { font-family: var(--font-display), Georgia, serif; }
   z-index: 2;
   color: #20382f;
   font-family: var(--font-site-devanagari-editorial), "Noto Serif Devanagari", serif;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 29px;
+  font-weight: 100;
   letter-spacing: -.02em;
   background:
     radial-gradient(circle 15px at calc(var(--brand-reveal-x) - 14px) calc(var(--brand-reveal-y) - 13px), rgba(255,255,255,.68), transparent 72%),
@@ -2371,3 +2371,9 @@ textarea.input-field {
   border-color: #16271f;
 }
 
+
+/* Keep the operational admin portal clear and utilitarian, independent of storefront typography. */
+.admin-shell,
+.admin-shell * {
+  font-family: Arial, Helvetica, sans-serif !important;
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import type { ProtectedImageRef } from '@/lib/api';
 
 type ManifestTile = {
@@ -110,6 +111,7 @@ export default function DesignLabCanvasImage({
   cacheKey,
   aspectRatio,
   pixelRatioCap = 2,
+  style,
 }: {
   image?: ProtectedImageRef | null;
   alt: string;
@@ -118,6 +120,7 @@ export default function DesignLabCanvasImage({
   cacheKey?: string;
   aspectRatio?: string;
   pixelRatioCap?: number;
+  style?: CSSProperties;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<ShadowRoot | null>(null);
@@ -182,7 +185,7 @@ export default function DesignLabCanvasImage({
       className={`protected-product-image dl-canvas-product-image ${className}`}
       role="img"
       aria-label={alt}
-      style={{ aspectRatio: aspectRatio ?? (image ? `${image.width} / ${image.height}` : undefined) }}
+      style={{ ...style, aspectRatio: aspectRatio ?? (image ? `${image.width} / ${image.height}` : undefined) }}
     />
   );
 }

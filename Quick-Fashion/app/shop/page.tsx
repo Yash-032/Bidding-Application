@@ -32,8 +32,8 @@ function ShopContent() {
   }, []);
   
   useEffect(() => {
-    // 600ms debounce — only fire the search API after the user has
-    // genuinely stopped typing, not between individual words.
+    // Debounce typing only. Initial loads and category changes should feel immediate.
+    const delay = search.trim() ? 350 : 0;
     const timer = window.setTimeout(() => {
       const version = ++requestVersion.current;
       setLoading(true);
@@ -55,7 +55,7 @@ function ShopContent() {
       })
         .catch((error) => { if (version === requestVersion.current) console.error(error); })
         .finally(() => { if (version === requestVersion.current) setLoading(false); });
-    }, 600);
+    }, delay);
     return () => window.clearTimeout(timer);
   }, [category, search]);
 

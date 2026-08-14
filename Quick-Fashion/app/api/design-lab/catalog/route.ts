@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const categoryPath = request.nextUrl.searchParams.get('category') || undefined;
     const [categoryTree, products] = await Promise.all([
       categories.listTree(),
-      catalog.listProducts({ categoryPath, page: 1, pageSize: 1000 }),
+      catalog.listProducts({ categoryPath, page: 1, pageSize: 120 }),
     ]);
 
     return NextResponse.json({

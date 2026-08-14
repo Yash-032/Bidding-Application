@@ -619,7 +619,7 @@
 .dl-category-visual .dl-canvas-product-image {
   width: min(90%, 500px);
   max-height: 94%;
-  transform: scale(1.08);
+  transform: scale(var(--dl-artwork-scale, 1.08));
   transform-origin: center;
   filter:
     drop-shadow(0 10px 7px rgba(21, 38, 30, .14))
@@ -628,12 +628,110 @@
 }
 
 .dl-category-card:hover .dl-category-visual .dl-canvas-product-image {
-  transform: translateY(-7px) scale(1.12) rotate(-.5deg);
+  transform: translateY(-7px) scale(var(--dl-artwork-hover-scale, 1.12)) rotate(-.5deg);
   filter:
     drop-shadow(0 13px 8px rgba(21, 38, 30, .15))
     drop-shadow(0 36px 28px rgba(21, 38, 30, .24));
 }
+/* Applied automatically from the generated native asset dimensions. */
+.dl-category-visual .dl-category-artwork-portrait {
+  width: min(66%, 340px);
+  height: min(92%, 500px);
+  max-height: 92%;
+  transform: scale(var(--dl-artwork-scale, .96));
+}
+
+.dl-category-card:hover .dl-category-visual .dl-category-artwork-portrait {
+  transform: translateY(-5px) scale(var(--dl-artwork-hover-scale, 1.01));
+}
+
+/* Preserve the full waistband-to-hem silhouette of portrait Bottoms artwork. */
+.dl-category-visual .dl-category-artwork-bottoms {
+  width: min(62%, 330px);
+  height: min(92%, 500px);
+  max-height: 92%;
+  transform: scale(var(--dl-artwork-scale, .96));
+}
+
+.dl-category-card:hover .dl-category-visual .dl-category-artwork-bottoms {
+  transform: translateY(-5px) scale(var(--dl-artwork-hover-scale, 1.01));
+}
+/* Preserve the complete silhouette of the portrait Hoodie artwork. */
+.dl-category-visual .dl-category-artwork-hoodie {
+  width: min(66%, 340px);
+  height: min(92%, 500px);
+  max-height: 92%;
+  transform: scale(var(--dl-artwork-scale, .97));
+}
+
+.dl-category-card:hover .dl-category-visual .dl-category-artwork-hoodie {
+  transform: translateY(-5px) scale(var(--dl-artwork-hover-scale, 1.02));
+}
+/* Preserve the complete silhouette of the portrait Dress artwork. */
+.dl-category-visual .dl-category-artwork-dress {
+  width: min(64%, 330px);
+  height: min(92%, 500px);
+  max-height: 92%;
+  transform: scale(var(--dl-artwork-scale, .97));
+}
+
+.dl-category-card:hover .dl-category-visual .dl-category-artwork-dress {
+  transform: translateY(-5px) scale(var(--dl-artwork-hover-scale, 1.02));
+}
 
 @media (max-width: 700px) {
-  .dl-category-visual .dl-canvas-product-image { width: 94%; transform: scale(1.04); }
+  .dl-category-visual .dl-canvas-product-image { width: 94%; transform: scale(var(--dl-artwork-scale, 1.04)); }
+  .dl-category-visual .dl-category-artwork-bottoms { width: min(68%, 310px); height: 90%; transform: scale(var(--dl-artwork-scale, .96)); }
+  .dl-category-visual .dl-category-artwork-hoodie { width: min(72%, 320px); height: 90%; transform: scale(var(--dl-artwork-scale, .97)); }
+  .dl-category-visual .dl-category-artwork-dress { width: min(70%, 315px); height: 90%; transform: scale(var(--dl-artwork-scale, .97)); }
+  .dl-category-visual .dl-category-artwork-portrait { width: min(72%, 320px); height: 90%; transform: scale(var(--dl-artwork-scale, .96)); }
+}
+
+/* Small glass cursor for category artwork. */
+.dl-category-visual {
+  --lens-x: 50%;
+  --lens-y: 50%;
+  cursor: none;
+}
+
+.dl-category-art-cursor {
+  position: absolute;
+  z-index: 20;
+  left: var(--lens-x);
+  top: var(--lens-y);
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(19, 51, 39, .5);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.72);
+  background: rgba(250, 248, 241, .58);
+  box-shadow:
+    0 4px 13px rgba(17, 42, 33, .14),
+    inset 3px 3px 7px rgba(255, 255, 255, .55);
+  backdrop-filter: blur(5px) saturate(1.15);
+  transition: opacity .12s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+}
+
+
+.dl-category-art-cursor::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  width: 7px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .82);
+  transform: rotate(-24deg);
+}
+
+.dl-category-visual:hover .dl-category-art-cursor {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+@media (hover: none), (pointer: coarse) {
+  .dl-category-visual { cursor: pointer; }
+  .dl-category-art-cursor { display: none; }
 }

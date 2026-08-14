@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { processProductImage } from '@/lib/protected-images/processor';
+import { categoryArtworkVersions } from './category-artwork-versions';
 
 const categoryArtworkFiles = {
   shirt: 'shirt.png',
@@ -36,7 +37,9 @@ export function ensureProtectedCategoryArtwork(categoryPath: string) {
     throw new Error('Category artwork is unavailable');
   }
 
-  const artworkCacheKey = `remove-bg-v3:${categoryPath}`;
+  const artwork = categoryArtworkVersions[categoryPath];
+  if (!artwork) throw new Error(`Category artwork version is unavailable for ${categoryPath}`);
+  const artworkCacheKey = `category-artwork:${categoryPath}:${artwork.version}`;
   const cached = artworkInProgress.get(artworkCacheKey);
   if (cached) return cached;
 
@@ -46,7 +49,7 @@ export function ensureProtectedCategoryArtwork(categoryPath: string) {
     'design-lab',
     'category-assets',
     categoryArtworkFiles[categoryPath],
-  )).then((source) => processProductImage(source));
+  )).then((source) => processProductImage(source, { imageId: `category-${categoryPath}-${artwork.version}` }));
 
   artworkInProgress.set(artworkCacheKey, operation);
   operation.catch(() => artworkInProgress.delete(artworkCacheKey));
