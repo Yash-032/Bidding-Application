@@ -7,9 +7,9 @@ export const categoryArtworkVersions = {
   "hoodie": {"version":"16d7e077a37c9936","width":408,"height":612,"displayScale":1.02,"hoverScale":1.07},
   "jackets": {"version":"bc4940a5a236499d","width":408,"height":612,"displayScale":1.02,"hoverScale":1.07},
   "shirt": {"version":"601476d4aaf82b97","width":408,"height":612,"displayScale":1.02,"hoverScale":1.07},
-  "shrug": {"version":"98a31bcd0f58b06c","width":1000,"height":1000,"displayScale":1.13,"hoverScale":1.17},
-  "tops": {"version":"3245dd44b7058b56","width":1000,"height":1000,"displayScale":1.13,"hoverScale":1.17},
+  "shrug": {"version":"5ae24facc90d251c","width":489,"height":510,"displayScale":1.02,"hoverScale":1.07},
+  "tops": {"version":"d79ab0bbaed92533","width":447,"height":558,"displayScale":1.02,"hoverScale":1.07},
   "sweater": {"version":"4e3e42ff962f343d","width":445,"height":560,"displayScale":1.02,"hoverScale":1.07},
-  "sweatshirt": {"version":"ee100ce6feea69a5","width":1000,"height":1000,"displayScale":1.13,"hoverScale":1.17},
+  "sweatshirt": {"version":"8238e84e66076efb","width":408,"height":612,"displayScale":1.02,"hoverScale":1.07},
   "t-shirt": {"version":"4a130fa1daf1de3b","width":408,"height":612,"displayScale":1.02,"hoverScale":1.07},
 } as const;
