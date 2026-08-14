@@ -13,7 +13,7 @@ export default function Navbar() {
       <nav className="main-nav">
         <div className="nav-inner">
           <div className="nav-left">
-            <Link href="/categories">Categories</Link><Link href="/shop">Shop all</Link><Link href="/shop?category=shirt">Shirts</Link><Link href="/auctions">Live Bids</Link><Link href="/shop/visual-search" className="vs-nav-link">Visual Search</Link>
+            <Link href="/categories" prefetch={false}>Categories</Link><Link href="/shop" prefetch={false}>Shop all</Link><Link href="/shop?category=shirt" prefetch={false}>Shirts</Link><Link href="/auctions" prefetch={false}>Live Bids</Link><Link href="/shop/visual-search" prefetch={false} className="vs-nav-link">Visual Search</Link>
           </div>
           <Link
             href="/"
@@ -33,15 +33,15 @@ export default function Navbar() {
             <span className="brand-texture-hindi" aria-hidden="true"><span>क्विक फैशन</span></span>
           </Link>
           <div className="nav-right">
-            {user?.role === 'ADMIN' && <Link href="/admin">Admin</Link>}
-            {user && <Link href="/profile">Profile</Link>}
-            {user && <Link href="/notifications">Updates</Link>}
-            {user ? <button onClick={logout}>Sign out</button> : <Link href="/auth">Sign in</Link>}
-            <Link href="/cart" aria-label="Shopping bag">Bag</Link>
+            {user?.role === 'ADMIN' && <Link href="/admin" prefetch={false}>Admin</Link>}
+            {user && <Link href="/profile" prefetch={false}>Profile</Link>}
+            {user && <Link href="/notifications" prefetch={false}>Updates</Link>}
+            {user ? <button onClick={logout}>Sign out</button> : <Link href="/auth" prefetch={false}>Sign in</Link>}
+            <Link href="/cart" prefetch={false} aria-label="Shopping bag">Bag</Link>
             <a href="/api/auth/pixa/login" aria-label="login">Get Started with Pixa</a>
           </div>
         </div>
-        <div className="mobile-nav"><Link href="/shop">Shop</Link><Link href="/categories">Categories</Link><Link href="/auctions">Auction</Link><Link href="/shop/visual-search">&#128247; Search</Link><Link href="/cart">Bag</Link></div>
+        <div className="mobile-nav"><Link href="/shop" prefetch={false}>Shop</Link><Link href="/categories" prefetch={false}>Categories</Link><Link href="/auctions" prefetch={false}>Auction</Link><Link href="/shop/visual-search" prefetch={false}>&#128247; Search</Link><Link href="/cart" prefetch={false}>Bag</Link></div>
       </nav>
     </>
   );
