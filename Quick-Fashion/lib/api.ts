@@ -187,6 +187,19 @@ export async function recordProductInteraction(type: 'PRODUCT_VIEW' | 'PRODUCT_D
   return apiFetch<{ recorded: true }>('/api/interactions', { method: 'POST', body: JSON.stringify({ type, productId, durationMs }) });
 }
 
+/** Records category exploration using the same interaction model as product views and dwell. */
+export async function recordCategoryInteraction(
+  type: 'PRODUCT_VIEW' | 'PRODUCT_DWELL',
+  categoryId: string,
+  durationMs?: number,
+) {
+  return apiFetch<{ recorded: true }>('/api/interactions', {
+    method: 'POST',
+    body: JSON.stringify({ type, categoryId, durationMs }),
+    keepalive: true,
+  });
+}
+
 export async function getProductDetail(id: string) {
   return apiFetch<ProductDetail>(`/api/products/${id}`);
 }

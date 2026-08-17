@@ -137,9 +137,9 @@ export default function DesignLabHomePage() {
           {visibleCards.map(({ category, product }, cardIndex) => (
             <Link
               className="dl-category-card"
-              href={`/design-lab/category/${category.path}`}
+              href={`/design-lab/category/${category.path}?categoryId=${encodeURIComponent(category.id)}`}
               key={category.id}
-              style={{ '--card-index': cardIndex } as React.CSSProperties}
+              style={{ '--card-index': cardIndex } as CSSProperties}
             >
               <div
                 className="dl-category-visual"

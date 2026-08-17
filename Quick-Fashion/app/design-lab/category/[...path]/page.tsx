@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ShoppingBag } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import DesignLabCanvasImage from '@/app/design-lab/DesignLabCanvasImage';
-import type { ProductListItem } from '@/lib/api';
+import { recordCategoryInteraction, type ProductListItem } from '@/lib/api';
 import { loadDesignLabProducts } from '../../lib';
 
 function garmentTitleLines(title: string) {
@@ -25,6 +25,8 @@ function garmentTitleLines(title: string) {
 
 export default function DesignLabCategoryPage() {
   const params = useParams<{ path: string[] }>();
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('categoryId');
   const categoryPath = useMemo(() => (params.path ?? []).join('/'), [params.path]);
   const categoryName = decodeURIComponent(params.path?.at(-1) ?? 'Collection').replaceAll('-', ' ');
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -54,6 +56,32 @@ export default function DesignLabCategoryPage() {
   }, [categoryPath]);
 
   const product = products[index];
+
+  useEffect(() => {
+    if (!categoryId) return;
+
+    const startedAt = Date.now();
+    let dwellSent = false;
+
+    recordCategoryInteraction('PRODUCT_VIEW', categoryId).catch(() => undefined);
+
+    const sendDwell = () => {
+      if (dwellSent) return;
+      dwellSent = true;
+
+      const durationMs = Date.now() - startedAt;
+      // Avoid false events from React Strict Mode's immediate development re-mount.
+      if (durationMs < 1000) return;
+
+      recordCategoryInteraction('PRODUCT_DWELL', categoryId, durationMs).catch(() => undefined);
+    };
+
+    window.addEventListener('pagehide', sendDwell);
+    return () => {
+      window.removeEventListener('pagehide', sendDwell);
+      sendDwell();
+    };
+  }, [categoryId]);
 
   useEffect(() => {
     if (!product) return;
