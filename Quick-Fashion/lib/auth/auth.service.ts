@@ -14,20 +14,15 @@ export interface SignupRequest {
 
 export class AuthService {
   async signup(req: SignupRequest) {
-    console.time("findUser");
     const existing = await prisma.user.findUnique({ where: { email: req.email } });
     if (existing) throw new ConflictError('An account with this email already exists');
-    console.timeEnd("findUser");
     
     if (req.password.length < 8) {
       throw new ValidationError('Password must be at least 8 characters');
     }
     
-    console.time("hash");
     const passwordHash = await bcrypt.hash(req.password, SALT_ROUNDS);
-    console.timeEnd("hash");
-
-    console.time('signup transaction');
+    
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: { email: req.email, phone: req.phone, passwordHash },
@@ -37,12 +32,9 @@ export class AuthService {
       await tx.cart.create({ data: { userId: created.id } });
       return created;
     });
-    console.timeEnd('signup transaction');
     
-    console.time("jwt");
     const verificationToken = this.generateVerificationToken(user.id);
-    console.timeEnd("jwt");
-
+    
     return {
       user: { id: user.id, email: user.email, role: user.role },
       verificationToken,

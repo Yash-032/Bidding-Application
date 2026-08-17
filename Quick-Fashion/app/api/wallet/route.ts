@@ -5,21 +5,14 @@ import { toErrorResponse } from '@/lib/utils/errors';
 
 export async function GET(req: NextRequest) {
     try {
-        console.time('get User')
         const user = await requireSessionUser(req);
-        console.timeEnd('get User')
 
-        console.time('get Wallet')
         const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: user.id } });
-        console.timeEnd('get Wallet')
-
-        console.time('get Ledger Entries')
         const ledgerEntries = await prisma.ledgerEntry.findMany({
             where: { walletId: wallet.id },
             orderBy: { createdAt: 'desc' },
             take: 20,
         });
-        console.timeEnd('get Ledger Entries')
 
         return NextResponse.json({
             availableBalance: wallet.availableBalance.toString(),
