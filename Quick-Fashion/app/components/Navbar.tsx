@@ -7,6 +7,7 @@ import { useAuth } from '@/app/contexts/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  if (pathname === '/auth') return null;
   return (
     <>
       <div className="announcement-bar">Complimentary delivery on orders above &#8377;10,000 &middot; Secure direct checkout</div>
@@ -34,7 +35,7 @@ export default function Navbar() {
           </Link>
           <div className="nav-right">
             {user?.role === 'ADMIN' && <Link href="/admin" prefetch={false}>Admin</Link>}
-            {user && <Link href="/profile" prefetch={false}>Profile</Link>}
+            {user && <Link href="/my-space" prefetch={false}>My space</Link>}{user && <Link href="/profile" prefetch={false}>Profile</Link>}
             {user && <Link href="/notifications" prefetch={false}>Updates</Link>}
             {user ? <button onClick={logout}>Sign out</button> : <Link href="/auth" prefetch={false}>Sign in</Link>}
             <Link href="/cart" prefetch={false} aria-label="Shopping bag">Bag</Link>

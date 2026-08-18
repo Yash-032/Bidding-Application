@@ -96,6 +96,26 @@ export async function verifyEmail(userId: string, token: string) {
   });
 }
 
+export async function requestEmailOtp(email: string) {
+  return apiFetch<{ sent: boolean }>('/api/auth/otp/request', { method: 'POST', body: JSON.stringify({ email }) });
+}
+
+export async function verifyEmailOtp(email: string, code: string) {
+  return apiFetch<{ verified: boolean }>('/api/auth/otp/verify', { method: 'POST', body: JSON.stringify({ email, code }) });
+}
+
+export async function savePersonalSpace(input: Record<string, unknown>) {
+  return apiFetch<{ saved: boolean }>('/api/onboarding/personal-space', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function uploadPersonalSpacePhotos(files: Record<string, File>) {
+  const token = getToken(); const form = new FormData();
+  Object.entries(files).forEach(([key, file]) => form.append(key, file));
+  const response = await fetch('/api/onboarding/photos', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form });
+  const data = await response.json();
+  if (!response.ok) throw new ApiError(data.error ?? 'Photo upload failed', response.status);
+  return data as { uploaded: boolean };
+}
 /* ============================================================
    Products / Catalog
    ============================================================ */

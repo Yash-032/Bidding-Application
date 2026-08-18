@@ -1,0 +1,448 @@
+@import url('https://fonts.googleapis.com/css2?family=Herr+Von+Muellerhoff&family=Pinyon+Script&family=Monsieur+La+Doulaise&family=Great+Vibes&family=Tangerine:wght@400;700&family=Alex+Brush&family=Italianno&family=Allura&family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;1,300&display=swap');
+/* 
+@font-face {
+  font-family: 'Zapfino';
+  src: local('Zapfino'), local('Zapfino Regular'), local('Zapfino-Regular'),
+       url('/fonts/zapfino.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+} */
+
+.personal-auth {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 50% 50%;
+  align-items: center;
+  justify-items: center;
+  background: #ffffff;
+  color: #111111;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 2rem 4vw;
+  border: none;
+  box-shadow: none;
+}
+
+.personal-auth-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: #ffffff;
+  border: none;
+}
+
+.art-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 650px;
+  position: relative;
+}
+
+.art-frame img {
+  width: 100%;
+  max-width: 460px;
+  height: 52vh;
+  max-height: 440px;
+  object-fit: contain;
+  display: block;
+}
+
+.art-caption {
+  margin-top: 0.8rem;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 1.25rem;
+  color: #333333;
+  text-align: center;
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 2;
+}
+
+.personal-auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1rem 3vw 1rem 5vw;
+  width: 100%;
+}
+
+.sketch-brand-header {
+  margin-bottom: 2.5rem;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.sketch-brand-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  margin: 0;
+  line-height: 1;
+  width: 100%;
+}
+
+.brand-wordmark-script {
+  font-family: 'Zapfino', 'Herr Von Muellerhoff', 'Pinyon Script', 'Monsieur La Doulaise', 'Great Vibes', 'Tangerine', 'Alex Brush', 'Italianno', 'Snell Roundhand', 'Bickham Script Pro', 'Edwardian Script ITC', cursive;
+  font-size: clamp(3.2rem, 5vw, 4.4rem);
+  font-weight: 400;
+  color: #000000;
+  line-height: 1;
+}
+
+.brand-wordmark-in {
+  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-weight: 600;
+  color: #000000;
+  margin-left: 0.1em;
+  letter-spacing: 0.05em;
+}
+
+.sketch-brand-subtitle {
+  font-family: 'Montserrat', -apple-system, sans-serif;
+  font-weight: 300;
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
+  color: #333333;
+  margin-top: 0.25rem;
+  width: 100%;
+  text-transform: none;
+  text-align: left;
+  letter-spacing: 0.01em;
+}
+
+.left-brand-header {
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.build-brand-header {
+  margin-bottom: 2.2rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.build-header-title {
+  font-family: 'Brush Script MT', 'Brush Script Std', 'Caveat', 'Alex Brush', cursive;
+  font-size: clamp(2.2rem, 3.8vw, 3.4rem);
+  font-weight: 400;
+  color: #000000;
+  line-height: 1.1;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.build-header-subtitle {
+  font-family: 'Helvetica Neue', 'HelveticaNeue-UltraLight', 'HelveticaNeue-Thin', 'Helvetica', sans-serif;
+  font-weight: 200;
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+  color: #333333;
+  margin-top: 0.3rem;
+  margin-bottom: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sketch-login-form {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sketch-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  margin-bottom: 1.1rem;
+}
+
+.sketch-input-group label {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 1.3rem;
+  min-width: 65px;
+  color: #333333;
+  text-align: left;
+}
+
+.sketch-input-group input {
+  flex: 1;
+  border: 1px solid #777777;
+  background: transparent;
+  padding: 0.45rem 0.65rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  border-radius: 0;
+  color: #111111;
+}
+
+.sketch-input-group input:focus {
+  border-color: #000000;
+}
+
+.sketch-submit-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-left: 40px;
+  margin-top: 1.8rem;
+  gap: 0.4rem;
+}
+
+.sketch-enter-btn {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  background: transparent;
+  border: 1px solid #777777;
+  color: #111111;
+  padding: 0.45rem 1.6rem;
+  cursor: pointer;
+  border-radius: 0;
+  text-transform: none;
+  transition: all 0.2s ease;
+}
+
+.sketch-enter-btn:hover {
+  background: rgba(0,0,0,0.05);
+  border-color: #000000;
+}
+
+.sketch-guest-btn,
+.sketch-sub-label-btn {
+  background: none;
+  border: none;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: #444444;
+  cursor: pointer;
+  text-transform: none;
+  padding: 0.2rem;
+  margin-top: 0.2rem;
+  transition: color 0.2s ease;
+}
+
+.sketch-guest-btn:hover,
+.sketch-sub-label-btn:hover {
+  color: #000000;
+}
+
+.sketch-space-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding-left: 40px;
+  margin-top: 2.5rem;
+}
+
+.sketch-create-space-pill {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  background: transparent;
+  border: 1px solid #666666;
+  color: #111111;
+  padding: 0.5rem 2.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: none;
+  transition: all 0.2s ease;
+}
+
+.sketch-create-space-pill:hover {
+  background: #111111;
+  color: #ffffff;
+}
+
+/* Multi-step Space Form Styles */
+.sketch-space-form {
+  width: 100%;
+  max-width: 440px;
+}
+
+.step-line {
+  height: 2px;
+  background: #e2e2e2;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.step-line i {
+  position: absolute;
+  inset: 0;
+  background: #111111;
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.step-line span {
+  position: absolute;
+  right: 0;
+  bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: #666666;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  margin: 0 0 1.5rem;
+  color: #666666;
+  font-weight: 400;
+}
+
+.space-form-content {
+  margin-top: 1rem;
+}
+
+.sketch-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: #333333;
+}
+
+.sketch-field input,
+.sketch-field select {
+  border: 1px solid #888888;
+  background: transparent;
+  padding: 0.6rem 0.8rem;
+  font: inherit;
+  outline: none;
+  border-radius: 0;
+  color: #111111;
+}
+
+.sketch-field input:focus,
+.sketch-field select:focus {
+  border-color: #000000;
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.2rem;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.photo-choice {
+  position: relative;
+  border: 1px solid #777777;
+  padding: 1rem;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.photo-choice input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.photo-choice span {
+  font-size: 1.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.photo-choice em {
+  font-size: 0.65rem;
+  font-style: normal;
+  color: #666666;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.otp-step {
+  margin: 1.5rem 0;
+}
+
+.intro {
+  line-height: 1.6;
+  color: #444444;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.otp {
+  font-size: 1.8rem !important;
+  letter-spacing: 0.4em !important;
+  text-align: center;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+
+.auth-link-btn {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #333333;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-link-btn:hover {
+  color: #000000;
+}
+
+@media (max-width: 850px) {
+  .personal-auth {
+    grid-template-columns: 1fr;
+    padding: 2rem 1.5rem;
+  }
+  .personal-auth-art {
+    display: none;
+  }
+  .personal-auth-panel {
+    padding: 1rem;
+  }
+  .field-grid,
+  .photo-grid {
+    grid-template-columns: 1fr;
+  }
+}

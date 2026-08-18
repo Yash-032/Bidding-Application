@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { addToCart, getProductDetail, recordProductInteraction, type ProductDetail } from '@/lib/api';
+import { addGuestCartItem } from '@/lib/guestCart';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import ProtectedProductImage from '@/app/components/ProtectedProductImage';
+import { GuestPrice } from '@/app/components/GuestPrice';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
@@ -113,7 +115,7 @@ export default function ProductPage() {
       <div className={`detail-copy${descriptionExpanded ? ' detail-copy-scrollable' : ''}`}>
         <Link href="/shop" className="back-link">← Back to shop</Link>
         <p className="eyebrow">Quick Fashion collection</p><h1>{product.title}</h1>
-        <p className="detail-price">₹{Number(product.priceInRupees).toLocaleString('en-IN')}</p>
+        <GuestPrice price={product.priceInRupees} />
         <div className="detail-description-wrap">
           <p className={`detail-description${descriptionExpanded ? ' expanded' : ''}`}>{product.description}</p>
           {hasLongDescription && <button type="button" className="detail-description-toggle" aria-expanded={descriptionExpanded} onClick={() => setDescriptionExpanded((expanded) => !expanded)}>{descriptionExpanded ? 'Show less' : 'Show more'}</button>}
@@ -121,9 +123,19 @@ export default function ProductPage() {
         <div className="size-heading"><span>Select size</span><button>Size guide</button></div>
         <div className="size-options">{product.availableSizes.map((item) => <button className={size === item ? 'active' : ''} onClick={() => setSize(item)} key={item}>{item}</button>)}</div>
         <button className="detail-buy" disabled={adding || product.stockQuantity < 1} onClick={async () => {
-          if (!user) return router.push('/auth');
           setAdding(true);
-          try { await addToCart(product.id, size); setNotice('Added to your bag.'); } catch (error) { setNotice(error instanceof Error ? error.message : 'Could not add to bag'); } finally { setAdding(false); }
+          try {
+            if (user) {
+              await addToCart(product.id, size);
+            } else {
+              addGuestCartItem(product, size);
+            }
+            setNotice('Added to your bag.');
+          } catch (error) {
+            setNotice(error instanceof Error ? error.message : 'Could not add to bag');
+          } finally {
+            setAdding(false);
+          }
         }}>{product.stockQuantity < 1 ? 'Out of stock' : adding ? 'Adding…' : 'Add to bag'}</button>
         {notice && <p className="integration-message">{notice} {notice.startsWith('Added') && <Link href="/cart">View bag →</Link>}</p>}
         {isLive && <div className="auction-option"><p><strong>Also available in a live auction</strong><br />This garment has been selected for administrator-controlled bidding.</p><Link href={`/auctions/${product.id}`}>View live auction →</Link></div>}

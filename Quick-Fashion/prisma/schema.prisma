@@ -82,6 +82,14 @@ enum NotificationChannel {
   PUSH
 }
 
+enum PersonalSpacePhotoKind {
+  SELFIE
+  FRONT
+  LEFT
+  RIGHT
+  BACK
+}
+
 enum InteractionType {
   SEARCH
   PRODUCT_VIEW
@@ -126,6 +134,8 @@ model User {
   measurement         Measurement?
   pixaConnection      PixaConnection?
   userInteractions    UserInteraction[]
+  personalSpacePhotos PersonalSpacePhoto[]
+  emailOtps           EmailOtp[]
 }
 
 model PixaConnection {
@@ -153,6 +163,10 @@ model Measurement {
   armLength     Float?
   thigh         Float?
   calf          Float?
+  heightCm      Float?
+  weightKg      Float?
+  legLengthCm   Float?
+  shoulderDepth Float?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -164,10 +178,40 @@ model UserProfile {
   fullName       String?
   bio            String?
   gender         String?
+  location       String?
+  age            Int?
   dateOfBirth    DateTime?
   preferredSizes String[]
   defaultAddress Json?
   updatedAt      DateTime  @updatedAt
+}
+
+model PersonalSpacePhoto {
+  id         String                 @id @default(uuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       PersonalSpacePhotoKind
+  width      Int
+  height     Int
+  originalKey String                 @unique
+  variants   Json
+  createdAt  DateTime               @default(now())
+
+  @@unique([userId, kind])
+  @@index([userId])
+}
+
+model EmailOtp {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model UserInteraction {

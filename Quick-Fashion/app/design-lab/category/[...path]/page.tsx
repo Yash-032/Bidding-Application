@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useParams, useSearchParams } from 'next/navigation';
 import DesignLabCanvasImage from '@/app/design-lab/DesignLabCanvasImage';
+import { GuestPrice } from '@/app/components/GuestPrice';
 import { recordCategoryInteraction, type ProductListItem } from '@/lib/api';
 import { loadDesignLabProducts } from '../../lib';
 
@@ -146,7 +147,7 @@ export default function DesignLabCategoryPage() {
             <span className="dl-bag-icon"><ShoppingBag size={20} /></span>
             <div>
               <Link href={`/products/${product.id}`}>View garment</Link>
-              <strong>₹{Number(product.priceInRupees).toLocaleString('en-IN')}</strong>
+              <GuestPrice price={product.priceInRupees} />
             </div>
           </div>
         </article>

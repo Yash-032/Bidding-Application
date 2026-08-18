@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/contexts/AuthContext';
 import { visualSearchByImage, type VisualSearchResult, type VisualSearchResponse } from '@/lib/api';
 import AuctionCard from '@/app/components/AuctionCard';
 
@@ -9,6 +11,15 @@ import AuctionCard from '@/app/components/AuctionCard';
 type SearchState = 'idle' | 'analysing' | 'results' | 'error';
 
 export default function VisualSearchPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/auth');
+    }
+  }, [user, loading, router]);
+
   const [state, setState] = useState<SearchState>('idle');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -79,10 +90,16 @@ export default function VisualSearchPage() {
     setResults([]);
     setTotalScanned(0);
     setErrorMessage('');
-    setAnalysisDetails(null);
-    currentImageRef.current = null;
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  if (loading || !user) {
+    return (
+      <div className="vs-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <p>Redirecting to login…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="vs-page">
@@ -229,4 +246,3 @@ export default function VisualSearchPage() {
     </div>
   );
 }
-

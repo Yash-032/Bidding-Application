@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { type ProductListItem } from '@/lib/api';
 import CountdownTimer from './CountdownTimer';
 import ProtectedProductImage from './ProtectedProductImage';
+import { GuestPrice } from './GuestPrice';
 
 export default function AuctionCard({ product, reason }: { product: ProductListItem; reason?: string | null }) {
   const auction = product.auction;
@@ -22,7 +23,7 @@ export default function AuctionCard({ product, reason }: { product: ProductListI
           <p className="product-kicker">{isLive ? 'Available to buy or bid' : product.categoryNode?.name || 'Quick Fashion collection'}</p>
           <h3><Link href={`/products/${product.id}`}>{product.title}</Link></h3>
         </div>
-        <p className="product-price">₹{Number(product.priceInRupees || 0).toLocaleString('en-IN')}</p>
+        <GuestPrice price={product.priceInRupees} />
       </div>
       {isLive && auction && <div className="card-timer"><span>Closing in</span><CountdownTimer endTime={auction.endTime} antiSnipingWindowSeconds={auction.antiSnipingWindowSeconds} /></div>}
       <div className="card-actions">

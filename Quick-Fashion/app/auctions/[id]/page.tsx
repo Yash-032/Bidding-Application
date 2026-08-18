@@ -163,7 +163,7 @@ export default function AuctionDetailPage() {
               <ProtectedProductImage
                 image={product.protectedImages[0]}
                 alt={product.title}
-                className="w-full h-full"
+                className="w-full h-full protected-contain"
                 eager
               />
             </div>
