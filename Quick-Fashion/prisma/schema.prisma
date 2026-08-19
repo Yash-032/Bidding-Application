@@ -136,6 +136,7 @@ model User {
   userInteractions    UserInteraction[]
   personalSpacePhotos PersonalSpacePhoto[]
   emailOtps           EmailOtp[]
+  targetProducts      Product[]           @relation("TargetUserProducts")
 }
 
 model PixaConnection {
@@ -321,7 +322,11 @@ model Product {
   fitProfile      ProductFitProfile?
   interactions    UserInteraction[]
 
+  targetUserId   String?
+  targetUser     User?     @relation("TargetUserProducts", fields: [targetUserId], references: [id], onDelete: SetNull)
+
   @@index([categoryId])
+  @@index([targetUserId])
 }
 
 model ProductFitProfile {
@@ -350,6 +355,7 @@ model ProductImage {
   product     Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
   uploaderId  String
   sortOrder   Int      @default(0)
+  viewType    String   @default("FRONT")
   width       Int
   height      Int
   originalKey String   @unique
@@ -358,6 +364,7 @@ model ProductImage {
   createdAt   DateTime @default(now())
 
   @@index([productId, sortOrder])
+  @@index([productId, viewType])
   @@index([uploaderId, status])
 }
 

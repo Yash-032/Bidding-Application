@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
     const products = await catalog.listProducts({
       search: query.get('search') || undefined,
       categoryPath: query.get('category') || undefined,
+      targetUserId: query.get('targetUserId') || undefined,
       auctionsOnly: query.get('auctionsOnly') === 'true',
       endingSoon: query.get('endingSoon') === 'true',
       page: Number(query.get('page') || 1),
@@ -50,9 +51,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const product = await catalog.createProduct({
       sellerId: user.id,
+      targetUserId: body.targetUserId || undefined,
       title: body.title,
       description: body.description,
       protectedImageIds: body.protectedImageIds || [],
+      imageViews: body.imageViews || [],
       priceInRupees: BigInt(body.priceInRupees),
       categoryPath: body.categoryPath || body.category,
       availableSizes: body.availableSizes || [],

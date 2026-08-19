@@ -105,10 +105,20 @@ export default function ProductPage() {
             </figure>
           ))}
         </div>
-        {images.length > 1 && <div className="detail-carousel-controls">
+        {images.length > 1 && <div className="detail-carousel-controls flex flex-wrap items-center justify-between gap-3">
           <button type="button" onClick={() => showImage(currentImage - 1)} aria-label="Previous product image">←</button>
-          <div className="detail-carousel-dots" aria-label={`Image ${currentImage + 1} of ${images.length}`}>{images.map((_, index) => <button type="button" key={index} className={index === currentImage ? 'active' : ''} onClick={() => showImage(index)} aria-label={`View image ${index + 1}`} />)}</div>
-          <span>{String(currentImage + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
+          <div className="detail-carousel-dots flex items-center gap-2" aria-label={`Image ${currentImage + 1} of ${images.length}`}>
+            {images.map((img, index) => (
+              <button
+                type="button"
+                key={img.id || index}
+                className={`h-2.5 rounded-full transition-all ${index === currentImage ? 'w-8 bg-black' : 'w-2.5 bg-neutral-300 hover:bg-neutral-400'}`}
+                onClick={() => showImage(index)}
+                aria-label={`View image ${index + 1}`}
+              />
+            ))}
+          </div>
+          <span className="text-xs font-mono">{String(currentImage + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
           <button type="button" onClick={() => showImage(currentImage + 1)} aria-label="Next product image">→</button>
         </div>}
       </div>

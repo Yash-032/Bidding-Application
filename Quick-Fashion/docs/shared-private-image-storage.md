@@ -5,7 +5,7 @@ The local protected-image pipeline reads and writes only through
 to use the same protected-image objects with the identical local root:
 
 ```env
-PRIVATE_IMAGE_STORAGE_PATH="C:/Users/YASH AGARWAL/Bidding-Application/bidding-application/shared-private-product-images"
+PRIVATE_IMAGE_STORAGE_PATH="D:/shared-protected-tiles"
 ```
 
 This directory is private storage. It must never be placed in `public/`,

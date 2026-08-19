@@ -9,7 +9,10 @@ function integer(name: string, fallback: number, min: number, max: number) {
 }
 
 const projectRoot = path.join(/* turbopackIgnore: true */ process.cwd());
-const storageRoot = path.resolve(process.env.PRIVATE_IMAGE_STORAGE_PATH ?? path.join(projectRoot, 'private', 'product-images'));
+const defaultStorageRoot = process.platform === 'win32'
+  ? 'D:/shared-protected-tiles'
+  : path.join(projectRoot, 'private', 'product-images');
+const storageRoot = path.resolve(process.env.PRIVATE_IMAGE_STORAGE_PATH ?? defaultStorageRoot);
 const forbiddenRoots = [path.resolve(projectRoot, 'public'), path.resolve(projectRoot, 'static')];
 if (forbiddenRoots.some((root) => storageRoot === root || storageRoot.startsWith(`${root}${path.sep}`))) {
   throw new Error('PRIVATE_IMAGE_STORAGE_PATH must not be inside public/ or static/');
@@ -18,7 +21,7 @@ if (forbiddenRoots.some((root) => storageRoot === root || storageRoot.startsWith
 export const protectedImageConfig = {
   grid: integer('IMAGE_TILE_GRID', 4, 2, 8),
   manifestTtlSeconds: integer('IMAGE_MANIFEST_TTL_SECONDS', 45, 10, 300),
-  maxUploadBytes: integer('IMAGE_MAX_UPLOAD_BYTES', 12 * 1024 * 1024, 1024, 50 * 1024 * 1024),
+  maxUploadBytes: integer('IMAGE_MAX_UPLOAD_BYTES', 50 * 1024 * 1024, 1024, 100 * 1024 * 1024),
   variantWidths: (process.env.IMAGE_VARIANT_WIDTHS ?? '480,960,1600')
     .split(',')
     .map(Number)

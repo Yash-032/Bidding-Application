@@ -135,9 +135,17 @@ export interface ProductAuction {
   version: number;
 }
 
+export interface ProtectedImageRef {
+  id: string;
+  width: number;
+  height: number;
+  viewType?: string | null;
+}
+
 export interface ProductListItem {
   id: string;
   sellerId: string;
+  targetUserId?: string | null;
   title: string;
   description: string;
   protectedImages: ProtectedImageRef[];
@@ -152,12 +160,6 @@ export interface ProductListItem {
   auction: ProductAuction | null;
 }
 
-export interface ProtectedImageRef {
-  id: string;
-  width: number;
-  height: number;
-}
-
 export interface User {
   id: string;
   email: string;
@@ -168,10 +170,15 @@ export interface User {
 export interface BidItem {
   id: string;
   auctionId: string;
-  user: User;
+  userId: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    profile: { fullName: string | null } | null;
+  };
   amountCredits: string;
-  status: string;
-  idempotencyKey: string;
+  status: 'ACTIVE' | 'OUTBID' | 'WON' | 'LOST' | 'REFUNDED' | 'VOIDED';
   createdAt: string;
 }
 
@@ -180,14 +187,19 @@ export interface ProductDetail extends ProductListItem {
   auction: (ProductAuction & { bids: BidItem[] }) | null;
 }
 
-export async function listProducts(params?: { search?: string; category?: string; auctionsOnly?: boolean; endingSoon?: boolean; page?: number }) {
+export async function listProducts(params?: { search?: string; category?: string; targetUserId?: string; auctionsOnly?: boolean; endingSoon?: boolean; page?: number }) {
   const sp = new URLSearchParams();
   if (params?.search) sp.set('search', params.search);
   if (params?.category) sp.set('category', params.category);
+  if (params?.targetUserId) sp.set('targetUserId', params.targetUserId);
   if (params?.auctionsOnly) sp.set('auctionsOnly', 'true');
   if (params?.endingSoon) sp.set('endingSoon', 'true');
   if (params?.page) sp.set('page', String(params.page));
   return apiFetch<{ products: ProductListItem[] }>(`/api/products?${sp.toString()}`);
+}
+
+export async function getUserAssignedProducts() {
+  return apiFetch<{ products: ProductListItem[] }>('/api/products/user-space');
 }
 
 export async function searchProducts(query: string, category?: string) {
@@ -197,9 +209,6 @@ export async function searchProducts(query: string, category?: string) {
 }
 
 export async function getPersonalizedFeed() {
-  // Cache-bust: the feed depends on interactions recorded moments ago,
-  // so every call must reach the server fresh (bypasses in-flight dedup
-  // and browser disk cache).
   return apiFetch<{ personalized: boolean; products: (ProductListItem & { reason: string | null })[] }>(`/api/feed?_t=${Date.now()}`);
 }
 
@@ -232,6 +241,8 @@ export async function createProduct(body: {
   title: string;
   description: string;
   protectedImageIds: string[];
+  imageViews?: { id: string; viewType: string }[];
+  targetUserId?: string;
   priceInRupees: string;
   categoryPath: string;
   availableSizes: string[];
@@ -468,4 +479,8 @@ export async function visualSearchByImage(imageDataUrl: string, category?: strin
       category: category || undefined,
     }),
   });
+}
+
+export async function getAdminUsers() {
+  return apiFetch<{ users: { id: string; email: string; fullName: string | null; role: string }[] }>('/api/admin/users');
 }

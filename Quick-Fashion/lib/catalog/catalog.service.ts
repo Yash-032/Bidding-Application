@@ -4,9 +4,11 @@ import { normalizeCategoryPath } from '@/lib/catalog/category.service';
 
 export interface CreateProductRequest {
   sellerId: string;
+  targetUserId?: string;
   title: string;
   description: string;
   protectedImageIds: string[];
+  imageViews?: { id: string; viewType: string }[];
   priceInRupees: bigint;
   categoryPath: string;
   availableSizes: string[];
@@ -31,6 +33,11 @@ export class CatalogService {
       ? await prisma.category.findUnique({ where: { path: categoryPath } })
       : null;
     if (!category?.isActive) throw new ValidationError('Select a valid product category');
+    
+    const viewMap = new Map<string, string>(
+      req.imageViews?.map((iv): [string, string] => [iv.id, iv.viewType]) ?? []
+    );
+
     return prisma.$transaction(async (tx) => {
       const staged = await tx.productImage.findMany({
         where: { id: { in: req.protectedImageIds }, uploaderId: req.sellerId, productId: null, status: 'STAGED' },
@@ -42,6 +49,7 @@ export class CatalogService {
       const product = await tx.product.create({
         data: {
           sellerId: req.sellerId,
+          targetUserId: req.targetUserId || null,
           title: req.title,
           description: req.description,
           images: [],
@@ -59,22 +67,28 @@ export class CatalogService {
       }
       await Promise.all(req.protectedImageIds.map((id, sortOrder) => tx.productImage.update({
         where: { id },
-        data: { productId: product.id, sortOrder, status: 'ACTIVE' },
+        data: {
+          productId: product.id,
+          sortOrder,
+          viewType: viewMap.get(id) || 'FRONT',
+          status: 'ACTIVE',
+        },
       })));
       return { ...product, protectedImages: await tx.productImage.findMany({
         where: { productId: product.id },
         orderBy: { sortOrder: 'asc' },
-        select: { id: true, width: true, height: true },
+        select: { id: true, width: true, height: true, viewType: true },
       }) };
     });
   }
 
-  async listProducts(params: { search?: string; categoryPath?: string; auctionsOnly?: boolean; endingSoon?: boolean; page?: number; pageSize?: number }) {
+  async listProducts(params: { search?: string; categoryPath?: string; targetUserId?: string; auctionsOnly?: boolean; endingSoon?: boolean; page?: number; pageSize?: number }) {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
     const categoryPath = params.categoryPath ? normalizeCategoryPath(params.categoryPath) : '';
     const productFilters = {
       isActive: true,
+      ...(params.targetUserId ? { targetUserId: params.targetUserId } : {}),
       ...(params.search ? {
         OR: [
           { title: { contains: params.search, mode: 'insensitive' as const } },
@@ -93,8 +107,6 @@ export class CatalogService {
       } : {}),
     };
 
-    // Auction browsing starts from Auction, whose status/end-time index is selective.
-    // Starting at Product made the database scan the catalog before checking its one-to-one auction relation.
     if (params.auctionsOnly) {
       const auctions = await prisma.auction.findMany({
         where: {
@@ -107,7 +119,7 @@ export class CatalogService {
               categoryNode: true,
               protectedImages: {
                 orderBy: { sortOrder: 'asc' },
-                select: { id: true, width: true, height: true },
+                select: { id: true, width: true, height: true, viewType: true },
               },
             },
           },
@@ -130,20 +142,36 @@ export class CatalogService {
       include: {
         auction: true,
         categoryNode: true,
-        protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true } },
+        protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true, viewType: true } },
       },
       orderBy: params.endingSoon ? { auction: { endTime: 'asc' } } : { createdAt: 'desc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
   }
+
+  async listUserProducts(userId: string) {
+    return prisma.product.findMany({
+      where: {
+        isActive: true,
+        targetUserId: userId,
+      },
+      include: {
+        auction: true,
+        categoryNode: true,
+        protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true, viewType: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async getProductDetail(productId: string) {
     const product = await prisma.product.findUnique({
       where: { id: productId },
       include: {
         seller: { select: { id: true, email: true } },
         categoryNode: true,
-        protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true } },
+        protectedImages: { orderBy: { sortOrder: 'asc' }, select: { id: true, width: true, height: true, viewType: true } },
         auction: {
           include: {
             bids: {

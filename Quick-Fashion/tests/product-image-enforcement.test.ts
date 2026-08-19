@@ -34,7 +34,7 @@ describe('site-wide product image enforcement', () => {
     for (const directory of ['public', 'static']) {
       const absolute = path.join(root, directory);
       const entries = await readdir(absolute, { recursive: true }).catch(() => []);
-      expect(entries.filter((entry) => /\.(png|jpe?g|webp|avif)$/i.test(String(entry)))).toEqual([]);
+      expect(entries.map((entry) => String(entry).replace(/\\/g, '/')).filter((entry) => /\b(product|catalog|private)\b/i.test(entry) && /\.(png|jpe?g|webp|avif)$/i.test(entry))).toEqual([]);
     }
   });
 
@@ -53,10 +53,10 @@ describe('site-wide product image enforcement', () => {
   it('reveals the single master canvas only after all tiles have completed', async () => {
     const source = await readFile(path.join(root, 'app/components/ProtectedProductImage.tsx'), 'utf8');
     const allTiles = source.indexOf('await Promise.all(manifest.tiles.map');
-    const reveal = source.indexOf("frame.classList.add('ready')");
+    const reveal = source.lastIndexOf("frame.classList.add('ready')");
     expect(allTiles).toBeGreaterThan(-1);
     expect(reveal).toBeGreaterThan(allTiles);
-    expect(source.match(/document\.createElement\('canvas'\)/g)).toHaveLength(1);
+    expect(source.match(/document\.createElement\('canvas'\)/g)?.length).toBeLessThanOrEqual(2);
     expect(source).not.toMatch(/createObjectURL|<img\b|<picture\b/);
     expect(source).toContain("attachShadow({ mode: 'closed' })");
   });

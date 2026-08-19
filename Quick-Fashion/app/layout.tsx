@@ -35,6 +35,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${siteMono.variable} ${siteEditorial.variable} ${siteDevanagariEditorial.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <AuthProvider>

@@ -6,7 +6,16 @@ const authService = new AuthService();
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    let email = '';
+    let password = '';
+    try {
+      const body = await req.json();
+      email = body.email;
+      password = body.password;
+    } catch {
+      return NextResponse.json({ error: 'email and password are required' }, { status: 400 });
+    }
+
     if (!email || !password) {
       return NextResponse.json({ error: 'email and password are required' }, { status: 400 });
     }

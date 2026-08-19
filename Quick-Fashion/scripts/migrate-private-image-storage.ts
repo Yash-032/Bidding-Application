@@ -26,32 +26,46 @@ async function snapshot(root: string): Promise<StorageSnapshot> {
 }
 
 async function main() {
-  const source = path.resolve(
-    process.env.PRIVATE_IMAGE_STORAGE_MIGRATION_SOURCE
-      ?? path.join(process.cwd(), 'private', 'product-images'),
-  );
+  const candidateSources = process.env.PRIVATE_IMAGE_STORAGE_MIGRATION_SOURCE
+    ? [path.resolve(process.env.PRIVATE_IMAGE_STORAGE_MIGRATION_SOURCE)]
+    : [
+        path.join(process.cwd(), 'shared-private-product-images'),
+        path.join(process.cwd(), 'private', 'product-images'),
+      ];
+
   const destination = protectedImageConfig.storageRoot;
-  if (source === destination || destination.startsWith(`${source}${path.sep}`)) {
-    throw new Error('The shared storage destination must be different from the legacy storage source');
-  }
-
   await mkdir(destination, { recursive: true });
-  const before = await snapshot(source);
-  await cp(source, destination, {
-    recursive: true,
-    force: false,
-    errorOnExist: false,
-    preserveTimestamps: true,
-  });
-  const after = await snapshot(destination);
-  if (after.files < before.files || after.bytes < before.bytes) {
-    throw new Error('Shared storage verification failed: not every legacy image file was copied');
+
+  let totalFilesCopied = 0;
+  let totalBytesCopied = 0;
+
+  for (const source of candidateSources) {
+    const exists = await stat(source).then((s) => s.isDirectory()).catch(() => false);
+    if (!exists) continue;
+    if (source === destination || destination.startsWith(`${source}${path.sep}`)) {
+      console.warn(`Skipping source ${source} as it matches destination ${destination}`);
+      continue;
+    }
+
+    const before = await snapshot(source);
+    if (before.files === 0) continue;
+
+    console.info(`Migrating ${before.files} file(s) (${before.bytes} bytes) from ${source} to ${destination}...`);
+    await cp(source, destination, {
+      recursive: true,
+      force: false,
+      errorOnExist: false,
+      preserveTimestamps: true,
+    });
+    totalFilesCopied += before.files;
+    totalBytesCopied += before.bytes;
   }
 
+  const destinationSnapshot = await snapshot(destination);
   console.info(
-    `Shared private image storage is ready at ${destination} (${before.files} files, ${before.bytes} bytes copied or verified).`,
+    `Shared private image storage is ready at ${destination} (${destinationSnapshot.files} total files, ${destinationSnapshot.bytes} bytes).`,
   );
-  console.info('The legacy private/product-images folder was intentionally kept as a rollback copy.');
+  console.info('Legacy source folders were intentionally kept as rollback copies.');
 }
 
 main().catch((error) => {

@@ -11,6 +11,7 @@ import {
   adminCreateAuction,
   adminVoidAuction,
   createProduct,
+  getAdminUsers,
   getCategories,
   triggerActivation,
   triggerSettlement,
@@ -52,10 +53,12 @@ export default function AdminOperationsPage() {
   const [schedulingSettle, setSchedulingSettle] = useState(false);
   const [auctionForm, setAuctionForm] = useState({ productId: '', auctionModel: 'ENGLISH', startingPriceCredits: '', startTime: '', endTime: '', minIncrement: '1', bidFee: '', priceStepPerBid: '', antiSnipingWindowSeconds: '30' });
   const [creatingAuction, setCreatingAuction] = useState(false);
+  const [users, setUsers] = useState<{ id: string; email: string; fullName: string | null; role: string }[]>([]);
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
-  const [productForm, setProductForm] = useState({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
+  const [productForm, setProductForm] = useState({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1', targetUserId: '' });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [protectedUploads, setProtectedUploads] = useState<ProtectedImageRef[]>([]);
+  const [imageViews, setImageViews] = useState<Record<string, string>>({});
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedProductSizes, setSelectedProductSizes] = useState(['M']);
@@ -80,38 +83,101 @@ export default function AdminOperationsPage() {
     getCategories()
       .then((result) => setCategories(result.categories))
       .catch((error) => toast(error instanceof Error ? error.message : 'Could not load categories', 'error'));
+
+    getAdminUsers()
+      .then((res) => setUsers(res.users))
+      .catch(() => {});
   }, [user, toast]);
 
-  const handleImageSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+async function compressImageIfNeeded(file: File): Promise<File> {
+  if (file.size <= 10 * 1024 * 1024) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const maxDim = 3200;
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file);
+          resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+        },
+        'image/jpeg',
+        0.88
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = url;
+  });
+}
+
+  const handleIncrementalUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    defaultView: 'FRONT' | 'BACK' | 'MODEL' | 'OTHER'
+  ) => {
     const files = Array.from(event.target.files ?? []);
-    setImageFiles(files);
-    setProtectedUploads([]);
-    setPreviewImageIndex(0);
     if (!files.length) return;
 
     setUploadingImages(true);
     try {
-      const result = await uploadProductImages(files);
-      setProtectedUploads(result.images);
-      toast(`${result.images.length} image${result.images.length === 1 ? '' : 's'} protected and ready to preview.`, 'success');
+      const processedFiles = await Promise.all(files.map(compressImageIfNeeded));
+      const result = await uploadProductImages(processedFiles);
+
+      setProtectedUploads((current) => [...current, ...result.images]);
+      setImageViews((current) => {
+        const next = { ...current };
+        result.images.forEach((img) => {
+          if (!next[img.id]) next[img.id] = defaultView;
+        });
+        return next;
+      });
+
+      toast(`Uploaded ${result.images.length} photo${result.images.length === 1 ? '' : 's'} (${defaultView.toLowerCase()} view).`, 'success');
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         logout();
-        toast('Your admin session expired after the security configuration changed. Log in again.', 'error');
+        toast('Your admin session expired. Log in again.', 'error');
         router.push('/auth');
         return;
       }
-      toast(error instanceof Error ? error.message : 'Could not protect the selected images', 'error');
+      toast(error instanceof Error ? error.message : 'Could not protect selected images', 'error');
     } finally {
       setUploadingImages(false);
+      event.target.value = '';
     }
+  };
+
+  const handleRemoveUpload = (imageId: string) => {
+    setProtectedUploads((current) => current.filter((img) => img.id !== imageId));
+    setImageViews((current) => {
+      const next = { ...current };
+      delete next[imageId];
+      return next;
+    });
+    setPreviewImageIndex(0);
   };
 
   const handleCreateProduct = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!imageFiles.length) return toast('Upload at least one product image.', 'error');
+    if (!protectedUploads.length) return toast('Upload at least one product image.', 'error');
     if (uploadingImages) return toast('Wait for image protection to finish.', 'error');
-    if (protectedUploads.length !== imageFiles.length) return toast('Select the images again so every file can be protected.', 'error');
     if (!selectedProductSizes.length) return toast('Select at least one available size.', 'error');
 
     setCreatingProduct(true);
@@ -120,15 +186,18 @@ export default function AdminOperationsPage() {
         title: productForm.title.trim(),
         description: productForm.description.trim(),
         protectedImageIds: protectedUploads.map((image) => image.id),
+        imageViews: Object.entries(imageViews).map(([id, viewType]) => ({ id, viewType })),
+        targetUserId: productForm.targetUserId || undefined,
         priceInRupees: productForm.priceInRupees,
         categoryPath: productForm.categoryPath,
         availableSizes: selectedProductSizes,
         stockQuantity: Number(productForm.stockQuantity),
       });
       setAuctionForm((current) => ({ ...current, productId: result.product.id }));
-      setProductForm({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1' });
+      setProductForm({ title: '', description: '', priceInRupees: '', categoryPath: '', stockQuantity: '1', targetUserId: '' });
       setImageFiles([]);
       setProtectedUploads([]);
+      setImageViews({});
       setPreviewImageIndex(0);
       setSelectedProductSizes(['M']);
       toast(`Product created. ID: ${result.product.id}`, 'success');
@@ -243,16 +312,140 @@ export default function AdminOperationsPage() {
             <div><label className="input-label">Stock quantity</label><input className="input-field" type="number" min="0" step="1" required value={productForm.stockQuantity} onChange={(event) => setProductForm({ ...productForm, stockQuantity: event.target.value })} /></div>
             <div className="admin-field-wide"><label className="input-label">Category</label><select className="input-field" required value={productForm.categoryPath} onChange={(event) => setProductForm({ ...productForm, categoryPath: event.target.value })}><option value="">Select a leaf category</option>{flattenCategories(categories).map((category) => <option key={category.id} value={category.path} disabled={category.children.length > 0}>{`${'— '.repeat(category.depth)}${category.name} (${category.path})`}</option>)}</select></div>
 
+            <div className="admin-field-wide">
+              <label className="input-label">Assign to specific user (Optional)</label>
+              <select
+                className="input-field"
+                value={productForm.targetUserId}
+                onChange={(event) => setProductForm({ ...productForm, targetUserId: event.target.value })}
+              >
+                <option value="">Public catalog (Visible to everyone)</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName ? `${u.fullName} (${u.email})` : u.email}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+                If selected, this garment will be exclusively visible in this user&apos;s personal store gallery.
+              </p>
+            </div>
+
             <fieldset className="admin-field-wide admin-sizes">
               <legend className="input-label">Available sizes</legend>
               <div className="size-options">{productSizes.map((size) => <button type="button" key={size} className={selectedProductSizes.includes(size) ? 'active' : ''} onClick={() => setSelectedProductSizes((current) => current.includes(size) ? current.filter((item) => item !== size) : [...current, size])}>{size}</button>)}</div>
             </fieldset>
 
-            <fieldset className="admin-field-wide admin-images">
-              <legend className="input-label">Product images</legend>
-              <input className="input-field" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple required onChange={handleImageSelection} />
+            <fieldset className="admin-field-wide admin-images space-y-4">
+              <legend className="input-label font-bold text-black">Product Images (Add photos from different folders)</legend>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[var(--background-secondary)] p-4 rounded-xl border border-[var(--border)]">
+                {/* Slot 1: Front View */}
+                <div className="flex flex-col gap-1.5 bg-white p-3 rounded-lg border border-neutral-200">
+                  <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    Front View Photo
+                  </label>
+                  <input
+                    className="input-field text-xs cursor-pointer"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={(e) => handleIncrementalUpload(e, 'FRONT')}
+                  />
+                  <span className="text-[11px] text-neutral-500">Pick Front photo from folder 1</span>
+                </div>
+
+                {/* Slot 2: Back View */}
+                <div className="flex flex-col gap-1.5 bg-white p-3 rounded-lg border border-neutral-200">
+                  <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                    Back View Photo
+                  </label>
+                  <input
+                    className="input-field text-xs cursor-pointer"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={(e) => handleIncrementalUpload(e, 'BACK')}
+                  />
+                  <span className="text-[11px] text-neutral-500">Pick Back photo from folder 2</span>
+                </div>
+
+                {/* Slot 3: Model Wearing */}
+                <div className="flex flex-col gap-1.5 bg-white p-3 rounded-lg border border-neutral-200">
+                  <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-purple-600" />
+                    Model Wearing Photo
+                  </label>
+                  <input
+                    className="input-field text-xs cursor-pointer"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={(e) => handleIncrementalUpload(e, 'MODEL')}
+                  />
+                  <span className="text-[11px] text-neutral-500">Pick Model photo from folder 3</span>
+                </div>
+
+                {/* Slot 4: Additional Photos */}
+                <div className="flex flex-col gap-1.5 bg-white p-3 rounded-lg border border-neutral-200">
+                  <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-neutral-600" />
+                    Additional Photos (Multiple)
+                  </label>
+                  <input
+                    className="input-field text-xs cursor-pointer"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    multiple
+                    onChange={(e) => handleIncrementalUpload(e, 'OTHER')}
+                  />
+                  <span className="text-[11px] text-neutral-500">Pick any extra detail photos</span>
+                </div>
+              </div>
+
+              {/* Uploaded Photos Management List */}
+              {protectedUploads.length > 0 && (
+                <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
+                  <div className="flex items-center justify-between">
+                    <label className="input-label font-bold text-black">
+                      Uploaded Garment Photos ({protectedUploads.length})
+                    </label>
+                    <span className="text-xs text-neutral-500">Categorize or remove photos before publishing</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                    {protectedUploads.map((img, index) => (
+                      <div key={img.id} className="flex items-center justify-between gap-2 text-xs bg-white p-3 rounded-xl border border-[var(--border)] shadow-sm">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[11px] font-bold text-neutral-700">
+                            #{index + 1}
+                          </span>
+                          <select
+                            className="input-field text-xs py-1 px-2"
+                            value={imageViews[img.id] || 'FRONT'}
+                            onChange={(e) => setImageViews({ ...imageViews, [img.id]: e.target.value })}
+                          >
+                            <option value="FRONT">Front View</option>
+                            <option value="BACK">Back View</option>
+                            <option value="MODEL">Model Wearing View</option>
+                            <option value="OTHER">Other / Detail View</option>
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUpload(img.id)}
+                          className="text-xs font-bold text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition"
+                          title="Remove photo"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </fieldset>
-            <button className="btn-primary admin-publish-product" disabled={creatingProduct || uploadingImages || protectedUploads.length !== imageFiles.length}>{uploadingImages ? 'Protecting images…' : creatingProduct ? 'Publishing product…' : 'Publish product'}</button>
+            <button className="btn-primary admin-publish-product" disabled={creatingProduct || uploadingImages || !protectedUploads.length}>
+              {uploadingImages ? 'Protecting photos…' : creatingProduct ? 'Publishing product…' : `Publish product (${protectedUploads.length} photo${protectedUploads.length === 1 ? '' : 's'})`}
+            </button>
           </div>
 
           <aside className="admin-product-preview">

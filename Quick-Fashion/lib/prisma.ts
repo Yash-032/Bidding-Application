@@ -39,8 +39,9 @@ export const prisma =
         : ["error"],
   });
 
-globalForDatabase.pgPool = pool;
-globalForDatabase.prisma = prisma;
+if (process.env.NODE_ENV === "production") {
+  globalForDatabase.prisma = prisma;
+}
 
 /** Keep one pooled connection available so page navigation does not repeatedly pay a cold database-connect cost. */
 export function warmDatabaseConnection() {

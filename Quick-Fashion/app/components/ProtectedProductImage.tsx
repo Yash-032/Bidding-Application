@@ -39,12 +39,14 @@ async function sha256Hex(value: ArrayBuffer) {
 }
 
 function delay(milliseconds: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
     const timeout = window.setTimeout(resolve, milliseconds);
-    signal.addEventListener('abort', () => {
+    const onAbort = () => {
       window.clearTimeout(timeout);
-      reject(signal.reason);
-    }, { once: true });
+      resolve();
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
@@ -310,10 +312,12 @@ export default function ProtectedProductImage({
           if (signal.aborted) return;
           canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
           frame.classList.remove('ready');
-          if (attempt < 2) await delay(250 * (2 ** attempt), signal);
+          const is404 = error instanceof Error && error.message.includes('404');
+          if (attempt < 2 && !is404) await delay(250 * (2 ** attempt), signal);
           else {
             renderPlaceholder(placeholder, 'error', false);
             console.warn('[protected-image] render failed', error instanceof Error ? error.message : error);
+            break;
           }
         }
       }
