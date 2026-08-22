@@ -12,10 +12,10 @@ import { processProductImage } from '@/lib/protected-images/processor';
  * Garment batch processing CLI script
  * 
  * Usage:
- *   npx tsx scripts/bulk-create-garments.ts --folder <FOLDER_PATH> --targetEmail <MODEL_EMAIL> --sellerEmail <SELLER_EMAIL> [--manifest-only]
+ *   npx tsx scripts/bulk-create-garments.ts --folder <FOLDER_PATH> --targetEmail <MODEL_EMAIL> --sellerEmail <SELLER_EMAIL> [--manifest-only] [--startIndex <INDEX>] [--startFolder <FOLDER>] [--onlyFolder <FOLDER>] [--limit <COUNT>]
  * 
  * Or with User IDs:
- *   npx tsx scripts/bulk-create-garments.ts --folder <FOLDER_PATH> --targetUserId <MODEL_ID> --sellerId <SELLER_ID> [--manifest-only]
+ *   npx tsx scripts/bulk-create-garments.ts --folder <FOLDER_PATH> --targetUserId <MODEL_ID> --sellerId <SELLER_ID> [--startIndex 42]
  */
 
 const catalogService = new CatalogService();
@@ -54,7 +54,14 @@ interface SkippedFolderReport {
   reason: string;
 }
 
-const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-2-flash', 'gemini-2.5-pro'];
+const GEMINI_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-3.1-pro-preview',
+  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash-8b',
+  'gemini-2.0-flash-lite-preview-02-05',
+];
 
 const DEFAULT_CATEGORIES = [
   'Shirt',
@@ -343,46 +350,58 @@ Respond with ONLY a valid JSON object (no markdown, no preamble, no markdown bac
     });
   }
 
-  // Iterate through available API keys starting from the current active key index
-  const keysCount = apiKeys.length;
-  for (let keyAttempt = 0; keyAttempt < keysCount; keyAttempt++) {
-    const keyIndex = (currentApiKeyIndex + keyAttempt) % keysCount;
-    const apiKey = apiKeys[keyIndex];
-    const genAI = new GoogleGenerativeAI(apiKey);
+  // Outer retry loop (up to 3 global attempts) for rate limits across keys/models
+  const MAX_GLOBAL_RETRIES = 3;
+  for (let globalAttempt = 1; globalAttempt <= MAX_GLOBAL_RETRIES; globalAttempt++) {
+    const keysCount = apiKeys.length;
+    let hitAnyRateLimit = false;
 
-    for (const modelName of GEMINI_MODELS) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(contents);
-        const text = result.response.text().trim();
-        const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-        const parsed = JSON.parse(cleaned);
+    for (let keyAttempt = 0; keyAttempt < keysCount; keyAttempt++) {
+      const keyIndex = (currentApiKeyIndex + keyAttempt) % keysCount;
+      const apiKey = apiKeys[keyIndex];
+      const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Keep using this working key index for subsequent items
-        currentApiKeyIndex = keyIndex;
+      for (const modelName of GEMINI_MODELS) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(contents);
+          const text = result.response.text().trim();
+          const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+          const parsed = JSON.parse(cleaned);
 
-        return {
-          title: parsed.title || 'Tailored Garment',
-          description: parsed.description || 'Premium fashion item.',
-          priceInRupees: Number(parsed.priceInRupees) || 2499,
-          categoryName: parsed.categoryName || existingCategoryNames[0] || 'T-Shirt',
-          availableSizes: Array.isArray(parsed.availableSizes) && parsed.availableSizes.length ? parsed.availableSizes : ['S', 'M', 'L', 'XL'],
-        };
-      } catch (err: any) {
-        const isRateLimit =
-          err?.status === 429 ||
-          err?.message?.includes('429') ||
-          err?.message?.toLowerCase().includes('quota') ||
-          err?.message?.toLowerCase().includes('rate limit') ||
-          err?.message?.toLowerCase().includes('resource_exhausted');
+          // Keep using this working key index for subsequent items
+          currentApiKeyIndex = keyIndex;
 
-        if (isRateLimit && keysCount > 1) {
-          console.warn(`[Gemini] API Key #${keyIndex + 1} hit rate limit/quota. Switching to next API key...`);
-          break; // Break model loop to switch key immediately
-        } else {
-          console.warn(`[Gemini] Model ${modelName} with Key #${keyIndex + 1} failed: ${err.message}. Trying next candidate...`);
+          return {
+            title: parsed.title || 'Tailored Garment',
+            description: parsed.description || 'Premium fashion item.',
+            priceInRupees: Number(parsed.priceInRupees) || 2499,
+            categoryName: parsed.categoryName || existingCategoryNames[0] || 'T-Shirt',
+            availableSizes: Array.isArray(parsed.availableSizes) && parsed.availableSizes.length ? parsed.availableSizes : ['S', 'M', 'L', 'XL'],
+          };
+        } catch (err: any) {
+          const isRateLimit =
+            err?.status === 429 ||
+            err?.message?.includes('429') ||
+            err?.message?.toLowerCase().includes('quota') ||
+            err?.message?.toLowerCase().includes('rate limit') ||
+            err?.message?.toLowerCase().includes('resource_exhausted');
+
+          if (isRateLimit) hitAnyRateLimit = true;
+
+          console.warn(
+            `[Gemini] Model "${modelName}" with Key #${keyIndex + 1} failed (${isRateLimit ? 'Rate limit / Quota exceeded' : err.message}).`
+          );
         }
       }
+      if (keysCount > 1) {
+        console.warn(`[Gemini] Key #${keyIndex + 1} exhausted models. Switching to next API key...`);
+      }
+    }
+
+    if (hitAnyRateLimit && globalAttempt < MAX_GLOBAL_RETRIES) {
+      console.warn(`[Gemini] All keys/models hit rate limits. Waiting 5s before retry (Attempt ${globalAttempt}/${MAX_GLOBAL_RETRIES})...`);
+      await new Promise((r) => setTimeout(r, 5000));
     }
   }
 
@@ -473,18 +492,29 @@ async function main() {
   const sellerEmail = getArg('--sellerEmail') || getArg('--sellerUserEmail') || getArg('--sellerId');
   const manifestOnly = args.includes('--manifest-only');
   const manifestPathInput = getArg('--manifest');
+  const startIndexArg = getArg('--startIndex') || getArg('--startFrom') || getArg('--offset');
+  const startFolderArg = getArg('--startFolder') || getArg('--folderName');
+  const onlyFolderArg = getArg('--onlyFolder') || getArg('--filter');
+  const limitArg = getArg('--limit') || getArg('--max');
+  const delayArg = getArg('--delay');
+  const interItemDelayMs = delayArg !== null && !isNaN(parseInt(delayArg, 10)) ? parseInt(delayArg, 10) : 500;
 
   if (!manifestPathInput && (!rootFolder || !targetEmail || !sellerEmail)) {
     console.error(`
 Usage:
-  npx tsx scripts/bulk-create-garments.ts --folder <PATH> --targetEmail <MODEL_EMAIL> --sellerEmail <SELLER_EMAIL> [--manifest-only]
+  npx tsx scripts/bulk-create-garments.ts --folder <PATH> --targetEmail <MODEL_EMAIL> --sellerEmail <SELLER_EMAIL> [options]
 
 Options:
-  --folder         Absolute path to the model root directory containing garment folders.
-  --targetEmail    Email of the model user to assign garments to (or --targetUserId).
-  --sellerEmail    Email of the seller creating the products (or --sellerId).
-  --manifest-only  Only generate 'garments_manifest.json' without committing to database.
-  --manifest       Path to existing 'garments_manifest.json' to execute ingestion directly.
+  --folder        Absolute path to the model root directory containing garment folders.
+  --targetEmail   Email of the model user to assign garments to (or --targetUserId).
+  --sellerEmail   Email of the seller creating the products (or --sellerId).
+  --startIndex    Start processing from 1-based folder index (e.g. --startIndex 42).
+  --startFolder   Start processing from subfolder matching name/number (e.g. --startFolder 42 or 42_FS_SB).
+  --onlyFolder    Process ONLY subfolder matching name/number (e.g. --onlyFolder 42).
+  --limit         Limit total number of folders to process (e.g. --limit 10).
+  --delay         Delay in ms between folder API calls to avoid rate limits (default: 500ms).
+  --manifest-only Only generate 'garments_manifest.json' without committing to database.
+  --manifest      Path to existing 'garments_manifest.json' to execute ingestion directly.
 `);
     process.exit(1);
   }
@@ -531,11 +561,76 @@ Options:
     console.warn('[Database Offline] Using default category list for Gemini analysis.');
   }
 
-  // Scan root directory for garment subfolders
+  // Scan root directory for garment subfolders & sort naturally
   const entries = fs.readdirSync(absoluteRoot, { withFileTypes: true });
-  const garmentDirs = entries
+  let allGarmentDirs = entries
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-    .map((e) => path.join(absoluteRoot, e.name));
+    .map((e) => path.join(absoluteRoot, e.name))
+    .sort((a, b) =>
+      path.basename(a).localeCompare(path.basename(b), undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+  if (allGarmentDirs.length === 0) {
+    console.error(`No subfolders found in root folder: ${absoluteRoot}`);
+    process.exit(1);
+  }
+
+  let startingIndex = 0; // 0-based internal index
+
+  if (startFolderArg) {
+    const targetFolder = startFolderArg.trim().toLowerCase();
+    const foundIdx = allGarmentDirs.findIndex((dirPath) => {
+      const name = path.basename(dirPath).toLowerCase();
+      return (
+        name === targetFolder ||
+        name.startsWith(targetFolder + '_') ||
+        name.startsWith(targetFolder + '-') ||
+        name.startsWith(targetFolder + ' ') ||
+        name.includes(targetFolder)
+      );
+    });
+    if (foundIdx !== -1) {
+      startingIndex = foundIdx;
+      console.log(`📌 Found starting folder "${path.basename(allGarmentDirs[foundIdx])}" at position #${foundIdx + 1} of ${allGarmentDirs.length}`);
+    } else {
+      console.error(`❌ Could not find subfolder matching "${startFolderArg}" in ${absoluteRoot}`);
+      process.exit(1);
+    }
+  } else if (startIndexArg) {
+    const parsedIndex = parseInt(startIndexArg, 10);
+    if (isNaN(parsedIndex) || parsedIndex < 1) {
+      console.error(`Invalid --startIndex value: "${startIndexArg}". Must be a positive integer (e.g. 1, 42).`);
+      process.exit(1);
+    }
+    startingIndex = Math.min(parsedIndex - 1, allGarmentDirs.length - 1);
+    console.log(`📌 Starting process from folder #${startingIndex + 1} ("${path.basename(allGarmentDirs[startingIndex])}") out of ${allGarmentDirs.length}`);
+  }
+
+  let garmentDirs = allGarmentDirs;
+
+  if (onlyFolderArg) {
+    const filterTerm = onlyFolderArg.trim().toLowerCase();
+    const filtered = allGarmentDirs.filter((dirPath) => {
+      const name = path.basename(dirPath).toLowerCase();
+      return name === filterTerm || name.startsWith(filterTerm + '_') || name.startsWith(filterTerm + '-') || name.includes(filterTerm);
+    });
+    if (filtered.length === 0) {
+      console.error(`❌ No subfolders found matching filter term "${onlyFolderArg}"`);
+      process.exit(1);
+    }
+    garmentDirs = filtered;
+    console.log(`🎯 Filtered to ${garmentDirs.length} specific folder(s) matching "${onlyFolderArg}"`);
+  } else if (startingIndex > 0) {
+    garmentDirs = allGarmentDirs.slice(startingIndex);
+  }
+
+  if (limitArg) {
+    const parsedLimit = parseInt(limitArg, 10);
+    if (!isNaN(parsedLimit) && parsedLimit > 0) {
+      garmentDirs = garmentDirs.slice(0, parsedLimit);
+      console.log(`⏱️ Limit applied: Processing ${garmentDirs.length} folder(s).`);
+    }
+  }
 
   const manifestItems: GarmentManifestItem[] = [];
   const skippedFolders: SkippedFolderReport[] = [];
@@ -545,6 +640,11 @@ Options:
   for (let i = 0; i < garmentDirs.length; i++) {
     const dirPath = garmentDirs[i];
     const folderName = path.basename(dirPath);
+
+    if (interItemDelayMs > 0 && i > 0) {
+      await new Promise((r) => setTimeout(r, interItemDelayMs));
+    }
+
     process.stdout.write(`[${i + 1}/${garmentDirs.length}] Processing folder: ${folderName}... `);
 
     const parseResult = parseGarmentFolder(dirPath);

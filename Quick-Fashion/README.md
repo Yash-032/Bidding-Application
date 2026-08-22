@@ -47,3 +47,6 @@ npx tsx scripts/bulk-create-garments.ts --folder "E:/QuickFashion/20241027/MODEL
 
 # 2. To ingest into DB:
 npx tsx scripts/bulk-create-garments.ts --manifest "garments_manifest_model_name.json"
+
+npx tsx scripts/bulk-create-garments.ts --folder "<PATH_TO_MODELS_DIR>" --targetEmail <MODEL_EMAIL> --sellerEmail <SELLER_EMAIL> --startFolder <START_FOLDER_NUMBER> --manifest-only
+
