@@ -112,6 +112,13 @@ enum AuctionEventType {
   AUCTION_CLOSED
 }
 
+enum FriendShipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
 model User {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -137,6 +144,8 @@ model User {
   personalSpacePhotos PersonalSpacePhoto[]
   emailOtps           EmailOtp[]
   targetProducts      Product[]           @relation("TargetUserProducts")
+  friendRequestsSent     FriendShip[]      @relation("FriendRequestsSent")
+  friendRequestsReceived FriendShip[]      @relation("FriendRequestsReceived")
 }
 
 model PixaConnection {
@@ -520,4 +529,21 @@ model Notification {
   payload   Json
   isRead    Boolean             @default(false)
   createdAt DateTime            @default(now())
+}
+
+model FriendShip {
+  id         String          @id @default(uuid())
+  requesterId String
+  addresseeId String
+  requester  User        @relation("FriendRequestsSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee  User        @relation("FriendRequestsReceived", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status     FriendShipStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  respondedAt DateTime?
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+  @@index([status, updatedAt])
 }
